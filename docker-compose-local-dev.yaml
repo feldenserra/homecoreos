@@ -3,16 +3,16 @@ services:
     image: mongo:latest
     container_name: local-mongo
     restart: always
+    ports:
+      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-RadApple123!}
       MONGO_INITDB_DATABASE: homecoreos
     volumes:
       - mongo-data:/data/db
-      - ./mongo-start.sh:/mongo-start.sh # Mount the script
-    # Run the script with bash. 
-    # This avoids 'chmod +x' issues on your host machine.
-    command: ["bash", "/mongo-start.sh"]
+      - ./mongo-start-local.sh:/mongo-start-local.sh # Mount the script
+    command: ["bash", "/mongo-start-local.sh"]
 
   mongo-express:
     image: mongo-express
@@ -23,7 +23,7 @@ services:
     depends_on:
       - mongo
     environment:
-      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_SERVER: local-mongo
       ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER:-admin}
       ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASS:-RadApple123!}
       ME_CONFIG_BASICAUTH_USERNAME: ${EXPRESS_USER:-admin}

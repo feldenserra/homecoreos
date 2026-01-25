@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Task {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  category  String?
+  done      Boolean @default(false)
+  doneAt    DateTime? 
+  createdAt DateTime @default(now())
+}
+
+model NutritionFacts {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  calories     Int
+  carbs        Int
+  fats         Int
+  protein      Int
+
+  recipeId     String @unique
+  recipe       Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model Recipe {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  name         String @unique
+  cookType     String? 
+
+  instructions String
+  createdAt    DateTime @default(now())
+
+  // A recipe has many ingredient links
+  ingredients  RecipeIngredient[]
+
+  nutritionFacts NutritionFacts?
+}
+
+model Ingredient {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  name    String @unique // "Flour", "Egg", etc.
+  
+  // An ingredient can be in many recipes
+  usedIn  RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  
+  quantity     String // "2", "1.5", "1/2"
+  uom          String // "cups", "tbsp", "unit"
+  
+  @@unique([recipeId, ingredientId])
+
+  recipeId     String
+  recipe       Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+}

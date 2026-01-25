@@ -70,7 +70,7 @@ export default async function Dashboard(props: { searchParams: Promise<{ filter?
               <div className="hero py-10 bg-base-200 rounded-box">
                 <div className="hero-content text-center">
                   <div className="max-w-md opacity-50">
-                    <h1 className="text-2xl font-bold">All caught up</h1>
+                    <h1 className="text-2xl font-bold">No Tasks...</h1>
                   </div>
                 </div>
               </div>

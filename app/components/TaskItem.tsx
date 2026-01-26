@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
 import { Checkbox, Group, Text, ActionIcon, Paper, Stack } from '@mantine/core';
-import { IconX } from '@tabler/icons-react'; // Using IconX to replace the text "X"
+import { IconX } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as taskRepo from '../actions/tasks';
-import { TaskModel } from '@/generated/prisma/models'; // Keeping your Prisma import
+import { TaskModel } from '@/generated/prisma/models';
 
 export default function TaskItem(task: TaskModel) {
   const router = useRouter();
@@ -15,10 +15,9 @@ export default function TaskItem(task: TaskModel) {
     setIsPending(true);
     try {
       await taskRepo.toggleStatus(task.id);
-      router.refresh(); // Tells Next.js to re-fetch data and update UI
+      router.refresh();
     } catch (e) {
       console.error("Failed to toggle task", e);
-      // Optional: Add alert here if needed
     } finally {
       setIsPending(false);
     }
@@ -39,59 +38,50 @@ export default function TaskItem(task: TaskModel) {
   }
 
   return (
-    <Paper 
-      withBorder 
-      p="sm" 
-      radius="md" 
-      // This group class allows us to target children on hover (for the delete button)
-      className="group hover:shadow-sm transition-all"
-      style={{ opacity: isPending ? 0.5 : 1 }}
+    <Paper
+      withBorder
+      p="md"
+      radius="md"
+      className="group transition-all hover:bg-gray-50"
+      style={{ opacity: isPending ? 0.6 : 1, transition: 'background-color 0.2s, opacity 0.2s' }}
     >
-      <Group justify="space-between" wrap="nowrap" align="flex-start">
-        
-        {/* Left Side: Checkbox + Text */}
-        <Group align="flex-start" wrap="nowrap" gap="md">
-          <Checkbox 
-            checked={task.done} 
-            onChange={handleToggle} 
+      <Group justify="space-between" wrap="nowrap" align="center">
+
+        <Group align="center" wrap="nowrap" gap="md">
+          <Checkbox
+            checked={task.done}
+            onChange={handleToggle}
             radius="xl"
-            mt={4} // Slight offset to align with text top
             size="md"
+            color="dark"
           />
-          
-          <Stack gap={2}>
-            <Text 
+
+          <Stack gap={0}>
+            <Text
               fw={500}
-              td={task.done ? 'line-through' : undefined} 
-              c={task.done ? 'dimmed' : undefined}
+              size="sm"
+              td={task.done ? 'line-through' : undefined}
+              c={task.done ? 'dimmed' : 'dark'}
             >
               {task.name}
             </Text>
-            
+
             <Group gap="xs">
-                <Text size="xs" c="dimmed">
-                    Created: {new Date(task.createdAt).toLocaleDateString()}
-                </Text>
-                
-                {task.done && task.doneAt && (
-                    <Text size="xs" c="green">
-                        • Completed: {new Date(task.doneAt).toLocaleDateString()}
-                    </Text>
-                )}
+              <Text size="xs" c="dimmed">
+                {new Date(task.createdAt).toLocaleDateString()}
+              </Text>
             </Group>
           </Stack>
         </Group>
 
-        {/* Right Side: Delete Button */}
-        {/* 'opacity-0 group-hover:opacity-100' makes it hide until you hover the row */}
-        <ActionIcon 
-            variant="subtle" 
-            color="red" 
-            onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Delete task"
+        <ActionIcon
+          variant="transparent"
+          color="gray"
+          onClick={handleDelete}
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Delete task"
         >
-          <IconX size={18} />
+          <IconX size={16} />
         </ActionIcon>
 
       </Group>

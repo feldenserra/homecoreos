@@ -1,39 +1,28 @@
-/*
-    Copyright (C) 2026 feldenserra
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published
-    by the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
 import type { Metadata } from "next";
-import "./globals.css";
-import '@mantine/core/styles.css';
-import { MantineProvider, AppShell, AppShellNavbar, AppShellMain } from '@mantine/core';
+import { ColorSchemeScript, MantineProvider, AppShell, AppShellNavbar, AppShellMain } from '@mantine/core';
+import { theme } from './theme';
 import { Sidebar } from "./components/Sidebar";
+import '@mantine/core/styles.css';
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "homecoreos",
   description: "homecoreos",
 };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <ColorSchemeScript />
+      </head>
       <body>
-        <MantineProvider>
+        <MantineProvider theme={theme}>
           <AppShell
-            navbar={{ width: 100, breakpoint: 'sm' }}
-            padding="md"
+            navbar={{ width: 80, breakpoint: 'sm' }} // Reduced width for minimalist sidebar
+            padding="xl" // Increased padding
           >
-            <AppShellNavbar p={0} withBorder={false}>
+            <AppShellNavbar p={0} withBorder={false} style={{ backgroundColor: 'transparent' }}>
               <Sidebar />
             </AppShellNavbar>
 

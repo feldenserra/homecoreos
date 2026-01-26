@@ -1,33 +1,41 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import * as taskRepo from '../actions/tasks'
+import { useForm } from '@mantine/form';
+import { TextInput, Button, Group } from '@mantine/core';
+import * as taskRepo from '../actions/tasks';
+import { IconPlus } from '@tabler/icons-react';
 
 export default function NewTaskForm() {
-  const [name, setName] = useState('')
-  const [loading, setLoading] = useState(false)
+  const form = useForm({
+    initialValues: { name: '' },
+    validate: {
+      name: (value) => (value.trim().length === 0 ? 'Name is required' : null),
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if(!name.trim()) return
-    
-    setLoading(true)
-    await taskRepo.create(name, 'Personal')
-    setName('')
-    setLoading(false)
-  }
+  const handleSubmit = async (values: typeof form.values) => {
+    await taskRepo.create(values.name, 'Personal');
+    form.reset();
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-        <input 
-            className="border p-2 w-full rounded"
-            placeholder="New Task..."
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+    <form onSubmit={form.onSubmit(handleSubmit)}>
+      <Group align="flex-start" gap="xs">
+        <TextInput
+          placeholder="New Task..."
+          style={{ flex: 1 }}
+          {...form.getInputProps('name')}
         />
-        <button type="submit" disabled={loading} className="bg-blue-500 text-white p-2 rounded">
-            {loading ? '...' : 'Add'}
-        </button>
+        <Button
+          type="submit"
+          variant="filled"
+          color="black"
+          radius="md"
+          loading={form.submitting}
+        >
+          <IconPlus size={18} />
+        </Button>
+      </Group>
     </form>
-  )
+  );
 }

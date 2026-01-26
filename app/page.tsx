@@ -1,6 +1,6 @@
-import { 
-  Title, Text, Badge, Paper, Group, ThemeIcon, Box, Center, 
-  Stack // 👈 Re-introducing Stack
+import {
+  Title, Text, Badge, Paper, Group, ThemeIcon, Box, Center,
+  Stack
 } from '@mantine/core';
 import { IconCheck, IconInbox } from '@tabler/icons-react';
 import * as taskRepo from './actions/tasks';
@@ -16,46 +16,41 @@ export default async function Dashboard(props: { searchParams: Promise<{ filter?
 
   const data = await taskRepo.getAll(showCompleted);
   const visibleTasks = data.tasks.filter(x => x.done === showCompleted);
-  
+
   return (
-    // 1. Re-introduced <Box> (Replaces div className="p-6")
-    <Box p="md">
-      
-      {/* ⚠️ KEEPING TAILWIND GRID FOR SAFETY (Just for this step) */}
+    <Box>
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        
-        {/* --- LEFT SIDEBAR --- */}
-        <div className="md:col-span-3">
-          
-          {/* 2. Re-introduced <Stack> (Replaces flex flex-col) */}
-          <Stack gap="md">
-            
-            <Paper withBorder p="md" radius="md">
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb="xs">
+
+        {/* --- LEFT SIDEBAR (Controls) --- */}
+        <div className="md:col-span-4 lg:col-span-3">
+          <Stack gap="lg">
+
+            <Paper p="lg" radius="lg">
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb="sm">
                 View
               </Text>
               <FilterToggle />
             </Paper>
 
-            <Paper withBorder p="md" radius="md">
+            <Paper p="lg" radius="lg">
               <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb="sm">
                 Add New
               </Text>
               <NewTaskForm />
             </Paper>
 
-            <Paper withBorder p="md" radius="md">
+            <Paper p="lg" radius="lg">
               <Group justify="space-between" align="center">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Lifetime Tasks
                 </Text>
-                <ThemeIcon variant="light" color="blue" radius="xl">
-                   <IconInbox size={16} />
+                <ThemeIcon variant="light" color="gray" radius="xl">
+                  <IconInbox size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mt="xs">
-                <Text fw={700} size="xl" lh={1}>{data.total}</Text>
-                <Text size="sm" c="dimmed" mb={2}>total</Text>
+                <Text fw={700} size="xl" lh={1} style={{ fontSize: '2rem' }}>{data.total}</Text>
+                <Text size="sm" c="dimmed" mb={4}>total</Text>
               </Group>
             </Paper>
 
@@ -63,19 +58,23 @@ export default async function Dashboard(props: { searchParams: Promise<{ filter?
         </div>
 
 
-        {/* --- MAIN CONTENT --- */}
-        <div className="md:col-span-9">
-          
-          <Group justify="space-between" align="flex-end" mb="lg">
-            <Title order={2}>
-              {showCompleted ? 'Archive' : 'My Tasks'}
-            </Title>
-            <Badge size="lg" variant="dot" color={showCompleted ? 'gray' : 'blue'}>
-              {visibleTasks.length} items
+        {/* --- MAIN CONTENT (Tasks) --- */}
+        <div className="md:col-span-8 lg:col-span-9">
+
+          <Group justify="space-between" align="flex-end" mb="xl">
+            <Stack gap={0}>
+              <Title order={2} fw={800} style={{ letterSpacing: '-0.5px' }}>
+                {showCompleted ? 'Archive' : 'My Tasks'}
+              </Title>
+              <Text c="dimmed">
+                {showCompleted ? 'View your completed history' : `You have ${visibleTasks.length} pending items`}
+              </Text>
+            </Stack>
+            <Badge size="lg" variant="light" color="gray" radius="md">
+              {visibleTasks.length}
             </Badge>
           </Group>
 
-          {/* 3. Re-introduced <Stack> here too */}
           <Stack gap="sm">
             {visibleTasks.map((task) => (
               <Box key={task.id}>
@@ -84,17 +83,17 @@ export default async function Dashboard(props: { searchParams: Promise<{ filter?
             ))}
 
             {visibleTasks.length === 0 && (
-              <Paper withBorder p="xl" radius="md" mt="xl">
-                <Center>
+              <Paper withBorder p="xl" radius="lg" mt="xl" style={{ borderStyle: 'dashed' }}>
+                <Center py="xl">
                   <Stack align="center" gap="xs">
                     <ThemeIcon size={60} radius="xl" variant="light" color="gray">
                       <IconCheck size={30} />
                     </ThemeIcon>
                     <Title order={3} mt="sm">All caught up</Title>
-                    <Text c="dimmed">
-                      {showCompleted 
-                        ? "No archived tasks found." 
-                        : "You have no pending tasks."}
+                    <Text c="dimmed" ta="center" maw={300}>
+                      {showCompleted
+                        ? "No archived tasks found in your history."
+                        : "You have no pending tasks. Enjoy your day!"}
                     </Text>
                   </Stack>
                 </Center>

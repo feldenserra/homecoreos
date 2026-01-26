@@ -1,6 +1,7 @@
-'use client'
+'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SegmentedControl } from '@mantine/core';
 
 export default function FilterToggle() {
   const router = useRouter();
@@ -8,19 +9,16 @@ export default function FilterToggle() {
   const current = searchParams.get('filter') === 'done' ? 'done' : 'active';
 
   return (
-    <div className="flex border rounded p-1 gap-2 bg-gray-100">
-      <button 
-        onClick={() => router.push('?filter=active')}
-        className={`flex-1 px-4 py-1 rounded ${current === 'active' ? 'bg-white shadow' : 'text-gray-500'}`}
-      >
-        My Tasks
-      </button>
-      <button 
-        onClick={() => router.push('?filter=done')}
-        className={`flex-1 px-4 py-1 rounded ${current === 'done' ? 'bg-white shadow' : 'text-gray-500'}`}
-      >
-        Archive
-      </button>
-    </div>
+    <SegmentedControl
+      value={current}
+      onChange={(value) => router.push(`?filter=${value}`)}
+      data={[
+        { label: 'My Tasks', value: 'active' },
+        { label: 'Archive', value: 'done' },
+      ]}
+      fullWidth
+      radius="md"
+      color="dark"
+    />
   );
 }

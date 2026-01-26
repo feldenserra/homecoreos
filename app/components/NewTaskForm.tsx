@@ -1,45 +1,33 @@
 'use client'
 
-import { useToast } from './ToastProvider'
+import { useState } from 'react'
 import * as taskRepo from '../actions/tasks'
-import { useRef } from 'react'
-import { CoreStack } from './CoreStack'
 
 export default function NewTaskForm() {
-    const { toast } = useToast()
-  const ref = useRef<HTMLFormElement>(null)
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  async function clientAction(formData: FormData) {
-    const name = formData.get('name') as string
-
-    if (!name) {
-        toast('Task name is required', 'error')
-      return
-    }
-
-    try {
-      await taskRepo.create(name, 'Personal') 
-      toast('Task created!', 'success')  
-      ref.current?.reset()       
-    } catch (e) {
-      toast('Failed to save task', 'error')
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if(!name.trim()) return
+    
+    setLoading(true)
+    await taskRepo.create(name, 'Personal')
+    setName('')
+    setLoading(false)
   }
 
   return (
-    <>
-            <CoreStack spacing={2}>
-                <form ref={ref} action={clientAction}>
-                    <div className="flex gap-2">
-                        <textarea
-                            name="name"
-                            className="textarea textarea-bordered w-full resize-none"
-                            placeholder="New task..."
-                        />
-                        <button type="submit" className="btn btn-primary">Add</button>
-                    </div>
-                </form>
-            </CoreStack>
-        </>
-    )
+    <form onSubmit={handleSubmit} className="flex gap-2">
+        <input 
+            className="border p-2 w-full rounded"
+            placeholder="New Task..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+        />
+        <button type="submit" disabled={loading} className="bg-blue-500 text-white p-2 rounded">
+            {loading ? '...' : 'Add'}
+        </button>
+    </form>
+  )
 }

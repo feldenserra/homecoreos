@@ -1,197 +1,140 @@
 'use client'
-import { useForm, useFieldArray, Controller } from 'react-hook-form'
-import { useTransition } from 'react'
-import * as recipeRepo from '../actions/recipes'
-import { Autocomplete } from './Autocomplete'
-import { useToast } from './ToastProvider'
-import { CoreItem } from './CoreItem'
-import { CorePage } from './CorePage'
-import { CoreStack } from './CoreStack'
 
-// 1. Define the shape of your form directly with TypeScript
-type RecipeFormValues = {
-  name: string
-  cookType: string
-  instructions: string
-  nutrition: {
-    calories: number
-    protein: number
-    carbs: number
-    fat: number
-  }
-  ingredients: {
-    ingredientId: string
-    name: string
-    qty: string
-    uom: string
-  }[]
-}
+import { useTransition } from 'react'
+import {
+    TextInput, NumberInput, Select, Button, Group,
+    Stack, Text, Box, Autocomplete, ActionIcon,
+    Textarea
+} from '@mantine/core'
+import { useForm } from '@mantine/form'
+import * as recipeRepo from '../actions/recipes' // Your existing backend action
 
 const UNITS = ["unit", "cup", "tbsp", "tsp", "oz", "lb", "g", "kg"]
 
 export function RecipeForm({ availableIngredients }: { availableIngredients: { id: string, name: string }[] }) {
-  const { toast } = useToast()
-  const [isPending, startTransition] = useTransition()
+    const [isPending, startTransition] = useTransition()
 
-  // 2. Setup useForm
-  // This replaces all your separate useState calls
-  const { register, control, handleSubmit, formState: { errors } } = useForm<RecipeFormValues>({
-    defaultValues: {
-      name: '',
-      cookType: 'Standard',
-      instructions: '',
-      nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      ingredients: [{ ingredientId: '', name: '', qty: '', uom: 'unit' }]
-    }
-  })
+    // This hook handles ALL state (replaces your 10 useState lines)
+    const form = useForm({
+        initialValues: {
+            name: '',
+            cookType: 'Standard',
+            instructions: '',
+            calories: 0, protein: 0, carbs: 0, fat: 0,
+            ingredients: [{ ingredientId: null, name: '', qty: '', uom: 'unit' }]
+        },
+        validate: {
+            name: (value) => (value.length < 2 ? 'Name is too short' : null),
+            instructions: (value) => (value.length < 10 ? 'Instructions are too short' : null),
+            calories: (value) => (value < 0 ? 'Calories must be positive' : null),
+            protein: (value) => (value < 0 ? 'Protein must be positive' : null),
+            carbs: (value) => (value < 0 ? 'Carbs must be positive' : null),
+            fat: (value) => (value < 0 ? 'Fat must be positive' : null),
+            ingredients: (value) => {
+                if (value.length === 0) return 'At least one ingredient is required'
+                for (let i = 0; i < value.length; i++) {
+                    const item = value[i]
+                    if (!item.name) return `Ingredient ${i + 1}: name is required`
+                    if (!item.qty) return `Ingredient ${i + 1}: quantity is required`
+                }
+                return null
+            },
+        },
+    })
 
-  // 3. Setup useFieldArray
-  // This replaces 'rows', 'setRows', 'toggleIngredients', and 'handleDeleteRow'
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "ingredients"
-  })
-
-  // 4. Clean Submit Handler
-  const onSubmit = (data: RecipeFormValues) => {
+  // This function only runs if validation passes
+  const handleSubmit = (values: typeof form.values) => {
     startTransition(async () => {
-      // You can pass 'data' directly to your server action now
-      // because it matches the structure you defined
-      const result = await recipeRepo.upsert({
-         id: undefined, 
-         ...data 
-      })
-
-      if (result) {
-        toast("Recipe saved!", "success")
-      } else {
-        toast("Failed to save recipe", "error")
-      }
+      // Logic to find Ingredient IDs based on names would go here or on backend
+      const result = await recipeRepo.upsert(values)
+      if(result) form.reset()
     })
   }
 
   return (
-    <div className="card bg-base-100 shadow-xl border border-base-200">
-      <div className="card-body overflow-visible">
-        <h3 className="card-title">New Recipe</h3>
+    // Box is like a div, but you use props for style (p="md" is padding medium)
+    <Box maw={800} mx="auto" p="lg" component="form" onSubmit={form.onSubmit(handleSubmit)}>
+      
+      <Text size="xl" fw={700} mb="lg">New Recipe</Text>
 
-        {/* We use handleSubmit from RHF to wrap our custom logic */}
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CoreStack row spacing={3}>
+      {/* Stack = Vertical Flexbox with spacing built in */}
+      <Stack gap="md">
+        <TextInput 
+          label="Recipe Name" 
+          placeholder="e.g. Chicken Parm" 
+          withAsterisk 
+          {...form.getInputProps('name')} 
+        />
+        
+        {/* Group = Horizontal Flexbox */}
+        <Group grow>
+          <NumberInput label="Calories" {...form.getInputProps('calories')} />
+          <NumberInput label="Protein" {...form.getInputProps('protein')} />
+          <NumberInput label="Carbs" {...form.getInputProps('carbs')} />
+          <NumberInput label="Fat" {...form.getInputProps('fat')} />
+        </Group>
+
+        <Select 
+          label="Cook Type" 
+          data={['Standard', 'Crockpot']} 
+          {...form.getInputProps('cookType')} 
+        />
+      </Stack>
+
+      {/* Dynamic Ingredients List */}
+      <Stack gap="xs" mt="xl">
+        <Text size="xs" fw={700} tt="uppercase" c="dimmed">Ingredients</Text>
+        
+        {form.values.ingredients.map((item, index) => (
+          <Group key={index} align="flex-end">
+            <TextInput 
+              placeholder="Qty" 
+              w={80} 
+              {...form.getInputProps(`ingredients.${index}.qty`)} 
+            />
+            <Select 
+              data={UNITS} 
+              w={100} 
+              {...form.getInputProps(`ingredients.${index}.uom`)} 
+            />
             
-            {/* Standard Input */}
-            <CoreItem>
-              <p className="text-xs font-bold opacity-50 uppercase mb-1">Recipe Name</p>
-              <input
-                {...register("name", { required: "Name is required" })}
-                className="input input-bordered"
-                placeholder="Recipe Name"
-              />
-              {errors.name && <span className="text-error text-xs">{errors.name.message}</span>}
-            </CoreItem>
+            <Autocomplete 
+              data={availableIngredients.map(i => i.name)}
+              placeholder="Ingredient Name"
+              style={{ flex: 1 }}
+              {...form.getInputProps(`ingredients.${index}.name`)}
+            />
 
-            {/* Nested Object Inputs (Nutrition) */}
-            <CoreItem>
-              <p className="text-xs font-bold opacity-50 uppercase mb-1">Calories</p>
-              <input
-                type="number"
-                {...register("nutrition.calories", { valueAsNumber: true })}
-                className="input input-bordered w-24 mr-2"
-              />
-            </CoreItem>
-            
-            {/* ... Repeat for other macros (Protein, Carbs, Fat) ... */}
-            
-            <CoreItem>
-              <p className="text-xs font-bold opacity-50 uppercase mb-1">Cook Type</p>
-              <select {...register("cookType")} className="select select-bordered w-32">
-                <option value="Standard">Standard</option>
-                <option value="Crockpot">Crockpot</option>
-              </select>
-            </CoreItem>
-          </CoreStack>
-
-          <div className="flex flex-col gap-2 mt-4">
-            <span className="text-xs font-bold opacity-50 uppercase">Ingredients</span>
-
-            {/* 5. Map through 'fields' from useFieldArray */}
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex gap-2 items-center relative z-10">
-                
-                {/* QTY */}
-                <input
-                  {...register(`ingredients.${index}.qty`, { required: true })}
-                  className="input input-bordered input-sm w-20 text-center"
-                  placeholder="1"
-                />
-
-                {/* UOM */}
-                <select
-                  {...register(`ingredients.${index}.uom`)}
-                  className="select select-bordered select-sm w-24"
-                >
-                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-
-                <div className="flex-1">
-                  {/* 6. The Controller Pattern 
-                      Since Autocomplete isn't a native HTML input, we use Controller
-                      to wire it up to React Hook Form. 
-                  */}
-                  <Controller
-                    control={control}
-                    name={`ingredients.${index}.name`}
-                    rules={{ required: "Ingredient required" }}
-                    render={({ field: { onChange, value } }) => (
-                      <Autocomplete
-                        items={availableIngredients.map(i => ({ ...i, active: true }))}
-                        value={value}
-                        onSelect={(item) => {
-                          // Update the Name field
-                          onChange(item.name)
-                          
-                          // If we have an ID, we can manually set the hidden ingredientId field
-                          // (requires importing 'setValue' from useForm if you want to do it this way,
-                          // or using a second Controller for the ID)
-                        }}
-                      />
-                    )}
-                  />
-                  {/* Hidden input to track the ID if needed */}
-                  <input type="hidden" {...register(`ingredients.${index}.ingredientId`)} />
-                </div>
-
-                <button 
-                  type="button" 
-                  onClick={() => remove(index)} 
-                  className="btn btn-ghost btn-xs text-error"
-                >
-                  X
-                </button>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              // Append a new empty object to the array
-              onClick={() => append({ ingredientId: '', name: '', qty: '', uom: 'unit' })}
-              className="btn btn-xs btn-ghost self-start"
+            <Button 
+              color="red" 
+              variant="light" 
+              onClick={() => form.removeListItem('ingredients', index)}
             >
-              + Add Ingredient
-            </button>
-          </div>
+              X
+            </Button>
+          </Group>
+        ))}
 
-          <textarea
-            {...register("instructions")}
-            className="textarea textarea-bordered h-24 w-full mt-4"
-            placeholder="Instructions"
-          />
+        <Button 
+          variant="default" 
+          size="xs" 
+          onClick={() => form.insertListItem('ingredients', { ingredientId: null, name: '', qty: '', uom: 'unit' })}
+        >
+          + Add Ingredient
+        </Button>
+      </Stack>
 
-          <button type="submit" disabled={isPending} className="btn btn-primary mt-4">
-            {isPending ? 'Saving...' : 'Save Recipe'}
-          </button>
-        </form>
-      </div>
-    </div>
+      <Textarea
+        component="textarea" 
+        label="Instructions" 
+        mt="xl"
+        rows={4} 
+        {...form.getInputProps('instructions')} 
+      />
+
+      <Button type="submit" mt="xl" fullWidth loading={isPending}>
+        Save Recipe
+      </Button>
+    </Box>
   )
 }

@@ -1,33 +1,26 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function FilterToggle() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const isDone = searchParams.get('filter') === 'done'
-
-  const handleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const status = e.target.checked ? 'done' : 'active'
-    router.push(`?filter=${status}`)
-  }
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const current = searchParams.get('filter') === 'done' ? 'done' : 'active';
 
   return (
-    <div className="form-control">
-      <label className="label cursor-pointer gap-3">
-        <span className={`label-text font-bold ${!isDone ? 'text-primary' : 'text-base-content/50'}`}>
-          Active
-        </span>
-        <input 
-          type="checkbox" 
-          className="toggle toggle-primary toggle-lg" 
-          checked={isDone} 
-          onChange={handleToggle}
-        />
-        <span className={`label-text font-bold ${isDone ? 'text-primary' : 'text-base-content/50'}`}>
-          Done
-        </span>
-      </label>
+    <div className="flex border rounded p-1 gap-2 bg-gray-100">
+      <button 
+        onClick={() => router.push('?filter=active')}
+        className={`flex-1 px-4 py-1 rounded ${current === 'active' ? 'bg-white shadow' : 'text-gray-500'}`}
+      >
+        My Tasks
+      </button>
+      <button 
+        onClick={() => router.push('?filter=done')}
+        className={`flex-1 px-4 py-1 rounded ${current === 'done' ? 'bg-white shadow' : 'text-gray-500'}`}
+      >
+        Archive
+      </button>
     </div>
-  )
+  );
 }

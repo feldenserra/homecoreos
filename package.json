@@ -11,9 +11,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@mantine/core": "^8.3.13",
+    "@mantine/form": "^8.3.13",
+    "@mantine/hooks": "^8.3.13",
     "@prisma/client": "6.19",
+    "@tabler/icons-react": "^3.36.1",
     "dotenv": "^17.2.3",
     "next": "16.1.4",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1"
@@ -24,7 +30,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
-    "daisyui": "^5.5.14",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "prisma": "6.19",

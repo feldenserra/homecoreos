@@ -10,8 +10,6 @@ services:
     volumes:
       - mongo-data:/data/db
       - ./mongo-start.sh:/mongo-start.sh # Mount the script
-    # Run the script with bash. 
-    # This avoids 'chmod +x' issues on your host machine.
     command: ["bash", "/mongo-start.sh"]
 
   app:
@@ -28,6 +26,7 @@ services:
       DATABASE_URL: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-RadApple123!}@mongo:27017/homecoreos?authSource=admin&replicaSet=rs0"
       HOSTNAME: "0.0.0.0"
 
+# Remove the UI in production, if you want
   mongo-express:
     image: mongo-express
     container_name: local-mongo-express

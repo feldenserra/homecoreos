@@ -8,7 +8,11 @@ So I built **HomeCoreOS**.
 
 It is designed to be the single source of truth for your personal life. No more juggling 5 different apps for habits, groceries, tasks, and workouts. HomeCoreOS brings it all together in a private, high-performance workspace.
 
-> **HomeCore Cloud (Coming Soon)**: White-glove hosting at **[HomeCore.com](https://homecore.com)**. Support the development and get hassle-free hosting, or run it yourself for free below.
+> **HomeCore Cloud (Coming Soon)**: All-in-one hosting coming soon... Support the development and get hassle-free hosting, or run it yourself for free below.
+
+**Updates in perpetuity** 
+**Never see ads.** 
+**Never see micro-transactions.**
 
 ## Features
 

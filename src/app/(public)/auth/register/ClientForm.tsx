@@ -17,6 +17,8 @@ import { IconCheck, IconAlertCircle, IconUser } from '@tabler/icons-react';
 import Link from 'next/link';
 import { checkUsernameAvailability } from '@/lib/repositories/profileRepository';
 import { Loader } from '@mantine/core';
+import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
 
 export function ClientForm() {
     const supabase = createClient();

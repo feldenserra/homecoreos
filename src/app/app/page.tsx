@@ -8,7 +8,7 @@ export default async function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     return (
-        <Container size="lg" py="xl">
+        <Container size="xl" py="xl">
             <Title order={1} mb="xl">
                 Welcome back, {user?.user_metadata?.first_name || 'User'}!
             </Title>

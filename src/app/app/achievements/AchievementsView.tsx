@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { Paper, Stack, TextInput, Textarea, Button, Text, ActionIcon, Group, LoadingOverlay, Alert, Box, Title, Modal } from '@mantine/core';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { createAchievement, deleteAchievement, Achievement, getAchievements } from '@/lib/repositories/achievementsRepository';
 
 // Sticky Note Functionality
@@ -49,14 +49,14 @@ export function AchievementsView() {
         return { x, y };
     };
 
-    const loadAchievements = async () => {
+    const loadAchievements = async (forceShuffle = false) => {
         setLoading(true);
         try {
             const data = await getAchievements();
 
             setAchievements(currentStickyNotes => {
-                // Create a map of existing notes for quick lookup
-                const existingMap = new Map(currentStickyNotes.map(note => [note.id, note]));
+                // If shuffling, we ignore existing positions
+                const existingMap = forceShuffle ? new Map() : new Map(currentStickyNotes.map(note => [note.id, note]));
 
                 return data.map(item => {
                     // if we already have this note, keep its visual properties
@@ -169,15 +169,15 @@ export function AchievementsView() {
                             <IconTrash size={14} />
                         </ActionIcon>
                     </Group>
-                    <Text fw={700} style={{ fontFamily: 'cursive, sans-serif' }} lineClamp={2} mb="xs">
+                    <Text fw={700} c="black" style={{ fontFamily: 'cursive, sans-serif' }} lineClamp={2} mb="xs">
                         {note.title}
                     </Text>
                     {note.description && (
-                        <Text size="sm" lineClamp={3}>
+                        <Text size="sm" c="black" lineClamp={3}>
                             {note.description}
                         </Text>
                     )}
-                    <Text size="xs" c="dimmed" mt="sm" ta="right">
+                    <Text size="xs" c="gray.7" mt="sm" ta="right">
                         {new Date(note.achieved_at || '').toLocaleDateString()}
                     </Text>
                 </Paper>
@@ -186,6 +186,27 @@ export function AchievementsView() {
             {loading && (
                 <Text pos="absolute" bottom="20px" left="20px">Loading achievements...</Text>
             )}
+
+            {/* Refresh Button - Left of Plus */}
+            <ActionIcon
+                onClick={() => loadAchievements(true)}
+                radius="xl"
+                size={50}
+                pos="absolute"
+                bottom={35}
+                right={100}
+                style={{
+                    zIndex: 100,
+                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    backgroundColor: 'rgba(57, 108, 205, 0.25)',
+                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    color: '#396ccd'
+                }}
+            >
+                <IconRefresh size={26} />
+            </ActionIcon>
 
             {/* FAB for Adding Achievement */}
             <ActionIcon

@@ -52,7 +52,7 @@ export const toggleTask = async (id: string, currentStatus: boolean): Promise<vo
     const supabase = await createClient();
     const { error } = await supabase
         .from('tasks')
-        .update({ is_complete: !currentStatus })
+        .update({ is_complete: !currentStatus, complete_date: !currentStatus ? new Date().toISOString() : null })
         .eq('id', id);
 
     if (error) {

@@ -1,5 +1,6 @@
 
 import { MarketingHeader } from '@/components/MarketingHeader';
+import { FloatingThemeToggle } from '@/components/FloatingThemeToggle';
 
 export default function Layout({
     children,
@@ -12,6 +13,7 @@ export default function Layout({
             <main>
                 {children}
             </main>
+            <FloatingThemeToggle />
         </>
     );
 }

@@ -2,143 +2,152 @@
 
 import { useForm } from '@mantine/form';
 import {
-    Box,
-    Code,
     Paper,
     Stack,
-    Group,
     Title,
     Text,
     Button,
     TextInput,
-    PasswordInput,
-    Select,
-    Checkbox,
-    NumberInput,
-    Textarea,
-    Divider,
-    Grid,
-    Switch,
-    SegmentedControl
+    ThemeIcon,
+    Alert,
+    Group,
+    Divider
 } from '@mantine/core';
-import { IconUser, IconLock, IconBriefcase, IconSettings } from '@tabler/icons-react';
-
-import { createClient } from '@/lib/supabase/client';
+import { IconCheck, IconAlertCircle, IconUser } from '@tabler/icons-react';
+import Link from 'next/link';
+import { checkUsernameAvailability } from '@/lib/repositories/profileRepository';
+import { Loader } from '@mantine/core';
 
 export function ClientForm() {
     const supabase = createClient();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+
+    // Username check state
+    const [usernameError, setUsernameError] = useState<string | null>(null);
+    const [checkingUsername, setCheckingUsername] = useState(false);
+
     const form = useForm({
         initialValues: {
             email: '',
             username: '',
-            password: '',
-            confirmPassword: '',
         },
         validate: {
             email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
-            username: (val) => (val.length < 4 ? 'Username must be at least 4 characters' : null),
-            password: (val) => (val.length < 8 ? 'Password must be at least 8 characters' : null),
-            confirmPassword: (val, values) => (val !== values.password ? 'Passwords do not match' : null),
+            username: (val) => (val.length < 3 ? 'Username must be at least 3 characters' : null),
         },
     });
 
+    const handleUsernameBlur = async () => {
+        const username = form.values.username;
+        if (username.length < 3) return;
+
+        setCheckingUsername(true);
+        setUsernameError(null);
+
+        const available = await checkUsernameAvailability(username);
+
+        if (!available) {
+            setUsernameError('Username is already taken');
+        }
+        setCheckingUsername(false);
+    };
+
+    const handleSubmit = async (values: typeof form.values) => {
+        if (usernameError) return; // Block submit if username taken
+
+        setLoading(true);
+        setError(null);
+
+        // Double check on submit just in case
+        const available = await checkUsernameAvailability(values.username);
+        if (!available) {
+            setUsernameError('Username is already taken');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Using signInWithOtp for registration as well
+            const { error } = await supabase.auth.signInWithOtp({
+                email: values.email,
+                options: {
+                    emailRedirectTo: `${location.origin}/auth/callback`,
+                    data: {
+                        username: values.username,
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            setSuccess(true);
+        } catch (err: any) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    if (success) {
+        return (
+            <Paper withBorder shadow="md" p={30} radius="md" mt={30} ta="center">
+                <ThemeIcon size={60} radius={60} color="green" variant="light" mb="md">
+                    <IconCheck size={30} />
+                </ThemeIcon>
+                <Title order={2} mb="md">Check your email!</Title>
+                <Text c="dimmed" size="sm" mb="xl">
+                    We've sent a login code to <b>{form.values.email}</b>.
+                    <br />
+                    Click the link or enter the code to verify your account.
+                </Text>
+                <Button component={Link} href="/auth/login" fullWidth variant="outline">
+                    Go to Login
+                </Button>
+            </Paper>
+        );
+    }
+
     return (
         <Paper withBorder p="xl" radius="md" shadow="sm" bg="var(--mantine-color-body)">
-            <Title order={3} mb="xl">Comprehensive Registration</Title>
+            <Title order={3} mb="xl">Create Account</Title>
 
-            <form onSubmit={form.onSubmit(async (values) => {
-                const { data, error } = await supabase.auth.signUp({
-                    email: values.email,
-                    password: values.password,
-                    options: {
-                        data: {
-                            username: values.username,
-                        }
-                    }
-                });
+            {error && (
+                <Alert icon={<IconAlertCircle size={16} />} title="Registration Failed" color="red" mb="md" withCloseButton onClose={() => setError(null)}>
+                    {error}
+                </Alert>
+            )}
 
-                if (error) {
-                    console.error('Signup error:', error);
-                    alert(`Error signing up: ${error.message}`);
-                } else {
-                    console.log('Signup successful:', data);
-                    alert('Registration successful! Check your email for verification (or if dev mode, just login).');
-                }
-            })}>
+            <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="xl">
+                    <Text size="sm" c="dimmed">
+                        We use passwordless login. Key in your email and choose a username to get started.
+                    </Text>
 
-                    {/* Section 1: Personal Information */}
-                    <Box>
-                        <Group mb="md">
-                            <IconUser size={20} color="var(--mantine-color-blue-6)" />
-                            <Title order={5}>Personal Information</Title>
-                        </Group>
-                        <Grid>
+                    <TextInput
+                        label="Username"
+                        placeholder="your_username"
+                        required
+                        leftSection={<IconUser size={16} />}
+                        rightSection={checkingUsername ? <Loader size="xs" /> : null}
+                        {...form.getInputProps('username')}
+                        onBlur={handleUsernameBlur}
+                        error={form.errors.username || usernameError}
+                    />
 
-                            <Grid.Col span={{ base: 12, sm: 6 }}>
-                                <TextInput
-                                    label="Email Address"
-                                    placeholder="matt-inez@example.com"
-                                    required
-                                    withAsterisk
-                                    {...form.getInputProps('email')}
-                                />
-                            </Grid.Col>
-
-                        </Grid>
-                    </Box>
-
-                    <Divider />
-
-                    {/* Section 2: Account Security */}
-                    <Box>
-                        <Group mb="md">
-                            <IconLock size={20} color="var(--mantine-color-red-6)" />
-                            <Title order={5}>Account Security</Title>
-                        </Group>
-                        <Stack gap="md">
-                            <TextInput
-                                label="Username"
-                                description="This will be your unique handle on the platform"
-                                placeholder="janedoe_dev"
-                                required
-                                withAsterisk
-                                {...form.getInputProps('username')}
-                            />
-                            <Grid>
-                                <Grid.Col span={{ base: 12, sm: 6 }}>
-                                    <PasswordInput
-                                        label="Password"
-                                        placeholder="Create a strong password"
-                                        required
-                                        withAsterisk
-                                        {...form.getInputProps('password')}
-                                    />
-                                </Grid.Col>
-                                <Grid.Col span={{ base: 12, sm: 6 }}>
-                                    <PasswordInput
-                                        label="Confirm Password"
-                                        placeholder="Confirm your password"
-                                        required
-                                        withAsterisk
-                                        {...form.getInputProps('confirmPassword')}
-                                    />
-                                </Grid.Col>
-                            </Grid>
-                        </Stack>
-                    </Box>
+                    <TextInput
+                        label="Email Address"
+                        placeholder="matt.inez@email.com"
+                        required
+                        {...form.getInputProps('email')}
+                    />
 
                     <Divider />
 
                     <Group justify="flex-end" mt="md">
-                        <Button variant="default" onClick={() => form.reset()}>Reset</Button>
-                        <Button type="submit" size="md">Create Account</Button>
+                        <Button variant="default" component={Link} href="/auth/login">Back to Login</Button>
+                        <Button type="submit" size="md" loading={loading}>Sign Up</Button>
                     </Group>
-
-                    <Text ta="right" size="sm" mt="sm">
-                        <b>Note:</b> This registers a new user in Supabase.
-                        Once registered, you can create Tasks which are secured by RLS.
-                    </Text>
                 </Stack>
             </form>
         </Paper>

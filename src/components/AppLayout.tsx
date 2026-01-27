@@ -2,7 +2,7 @@
 
 import { AppShell, Burger, Group, NavLink, Text, ThemeIcon, ScrollArea, Divider, Button } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconHome, IconListCheck, IconChefHat, IconSettings, IconLogout, IconNotebook, IconTrophy } from '@tabler/icons-react';
+import { IconHome, IconListCheck, IconChefHat, IconSettings, IconNotebook, IconTrophy } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -49,7 +49,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
                     <Link href="/app" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <Group gap="xs">
-                            <ThemeIcon variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                            <ThemeIcon variant="filled" size="md">
                                 <IconHome size={18} />
                             </ThemeIcon>
                             <Text fw={700} fz="lg">HomeCoreOS</Text>
@@ -76,20 +76,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </AppShell.Section>
                 <AppShell.Section>
                     <Divider my="sm" />
-                    <Button
-                        variant="light"
-                        color="red"
-                        fullWidth
-                        leftSection={<IconLogout size="1rem" />}
-                        onClick={async () => {
-                            const { createClient } = await import('@/lib/supabase/client');
-                            const supabase = createClient();
-                            await supabase.auth.signOut();
-                            window.location.href = '/auth/login';
-                        }}
-                    >
-                        Logout
-                    </Button>
                     <Text size="xs" c="dimmed" ta="center" pt="md">
                         v0.1.0 Beta
                     </Text>

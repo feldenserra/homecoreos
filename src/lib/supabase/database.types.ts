@@ -9,6 +9,83 @@ export type Json =
 export interface Database {
     public: {
         Tables: {
+            bug_reports: {
+                Row: {
+                    id: string
+                    created_at: string
+                    user_id: string
+                    title: string
+                    description: string
+                    steps_to_reproduce: string | null
+                    severity: 'low' | 'medium' | 'high' | 'critical'
+                    status: 'open' | 'in_progress' | 'resolved' | 'wont_fix'
+                    device_metadata: Json | null
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    user_id: string
+                    title: string
+                    description: string
+                    steps_to_reproduce?: string | null
+                    severity?: 'low' | 'medium' | 'high' | 'critical'
+                    status?: 'open' | 'in_progress' | 'resolved' | 'wont_fix'
+                    device_metadata?: Json | null
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    user_id?: string
+                    title?: string
+                    description?: string
+                    steps_to_reproduce?: string | null
+                    severity?: 'low' | 'medium' | 'high' | 'critical'
+                    status?: 'open' | 'in_progress' | 'resolved' | 'wont_fix'
+                    device_metadata?: Json | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "bug_reports_user_id_fkey"
+                        columns: ["user_id"]
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            profiles: {
+                Row: {
+                    id: string
+                    username: string | null
+                    full_name: string | null
+                    avatar_url: string | null
+                    website: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id: string
+                    username?: string | null
+                    full_name?: string | null
+                    avatar_url?: string | null
+                    website?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    username?: string | null
+                    full_name?: string | null
+                    avatar_url?: string | null
+                    website?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "profiles_id_fkey"
+                        columns: ["id"]
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             ingredients: {
                 Row: {
                     id: string

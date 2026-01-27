@@ -7,11 +7,11 @@ import Link from 'next/link';
 export function MarketingHeader() {
     return (
         <header style={{ height: 60, borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
-            <Container size="md" h="100%">
+            <Container size="xl" h="100%">
                 <Group justify="space-between" h="100%">
                     <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <Group gap="xs">
-                            <ThemeIcon variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                            <ThemeIcon variant="filled" size="md">
                                 <IconHome size={18} />
                             </ThemeIcon>
                             <Text fw={700} fz="lg">HomeCoreOS</Text>
@@ -23,13 +23,14 @@ export function MarketingHeader() {
                             component="a"
                             href="https://github.com/feldenserra/homecoreos"
                             target="_blank"
-                            variant="subtle"
-                            color="gray"
+                            variant="filled"
+                            color="black"
+                            radius="xl"
                             leftSection={<IconBrandGithub size={16} />}
                         >
                             GitHub
                         </Button>
-                        <Button component={Link} href="/auth/login" variant="light">
+                        <Button component={Link} href="/auth/login" variant="filled" color="indigo.7">
                             Login
                         </Button>
                     </Group>

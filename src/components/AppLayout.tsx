@@ -2,7 +2,7 @@
 
 import { AppShell, Burger, Group, NavLink, Text, ThemeIcon, ScrollArea, Divider, Button } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconHome, IconListCheck, IconChefHat, IconSettings, IconLogout } from '@tabler/icons-react';
+import { IconHome, IconListCheck, IconChefHat, IconSettings, IconLogout, IconNotebook } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -14,6 +14,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { icon: IconHome, label: 'Dashboard', href: '/app' },
         { icon: IconListCheck, label: 'Tasks', href: '/app/tasks' },
         { icon: IconChefHat, label: 'Recipes', href: '/app/recipes' },
+        { icon: IconNotebook, label: 'Notes', href: '/app/notes' },
     ];
 
     const items = links.map((link) => (

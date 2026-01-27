@@ -5,13 +5,14 @@ import { useForm } from '@mantine/form';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { getURL } from '@/utils/get-url';
 
 export function LoginForm() {
     const supabase = createClient();
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -25,6 +26,10 @@ export function LoginForm() {
             password: (value) => (value.length < 1 ? 'Password is required' : null),
         },
     });
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleLogin = async (values: typeof form.values) => {
         setLoading(true);
@@ -44,6 +49,10 @@ export function LoginForm() {
             setLoading(false);
         }
     };
+
+    if (!mounted) {
+        return null;
+    }
 
     return (
         <Paper withBorder shadow="md" p={30} mt={30} radius="md">

@@ -34,7 +34,7 @@ export function LoginForm() {
         if (error) {
             setError(error.message);
         } else {
-            router.push('/tasks');
+            router.push('/app');
             router.refresh();
         }
     };

@@ -39,9 +39,8 @@ export async function updateSession(request: NextRequest) {
 
     const path = request.nextUrl.pathname;
 
-    // Protected Routes: Tasks, Recipes, Settings
-    const protectedPaths = ['/tasks', '/recipes', '/settings'];
-    const isProtected = protectedPaths.some(p => path.startsWith(p));
+    // Protected Routes: Everything under /app
+    const isProtected = path.startsWith('/app');
 
     // Auth Routes: Login, Register
     const isAuthRoute = path.startsWith('/auth');
@@ -53,10 +52,10 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // 2. If logged in and trying to access Login/Register -> Redirect to Tasks (Dashboard)
+    // 2. If logged in and trying to access Login/Register -> Redirect to Dashboard
     if (user && isAuthRoute) {
         const url = request.nextUrl.clone()
-        url.pathname = '/tasks'
+        url.pathname = '/app'
         return NextResponse.redirect(url)
     }
 

@@ -11,9 +11,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     const links = [
-        { icon: IconHome, label: 'Home', href: '/' },
-        { icon: IconListCheck, label: 'Tasks', href: '/tasks' },
-        { icon: IconChefHat, label: 'Recipes', href: '/recipes' },
+        { icon: IconHome, label: 'Dashboard', href: '/app' },
+        { icon: IconListCheck, label: 'Tasks', href: '/app/tasks' },
+        { icon: IconChefHat, label: 'Recipes', href: '/app/recipes' },
     ];
 
     const items = links.map((link) => (
@@ -62,10 +62,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
                     <NavLink
                         component={Link}
-                        href="/settings"
+                        href="/app/settings"
                         label="Settings"
                         leftSection={<IconSettings size="1rem" stroke={1.5} />}
-                        active={pathname === '/settings'}
+                        active={pathname === '/app/settings'}
                         variant="light"
                         onClick={() => { if (opened) toggle(); }}
                     />

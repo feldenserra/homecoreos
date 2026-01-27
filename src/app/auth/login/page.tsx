@@ -17,6 +17,7 @@
 import { Container, Title, Text, Anchor } from '@mantine/core';
 import Link from 'next/link';
 import { LoginForm } from './LoginForm';
+import { ClientLinkAnchor } from '@/components/ClientLinkAnchor';
 
 export default function LoginPage() {
     return (
@@ -26,11 +27,10 @@ export default function LoginPage() {
             </Title>
             <Text c="dimmed" size="sm" ta="center" mt={5}>
                 Do not have an account yet?{' '}
-                <Link href="/auth/register" passHref legacyBehavior>
-                    <Anchor component="a" size="sm">
-                        Create account
-                    </Anchor>
-                </Link>
+                Do not have an account yet?{' '}
+                <ClientLinkAnchor href="/auth/register" size="sm">
+                    Create account
+                </ClientLinkAnchor>
             </Text>
 
             <LoginForm />

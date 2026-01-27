@@ -17,6 +17,7 @@
 import { Container, Title, Text, Button, Group, Stack, ThemeIcon, SimpleGrid, Paper } from '@mantine/core';
 import { IconCheck, IconRocket, IconShieldLock } from '@tabler/icons-react';
 import Link from 'next/link';
+import { ClientLinkButton } from '@/components/ClientLinkButton';
 
 // NOTE: This is now a Server Component (no 'use client')
 // To make Mantine Button work with Next Link in RSC, we wrap Button in Link
@@ -44,16 +45,12 @@ export default function Home() {
             Correct way to link in RSC: 
             Use Link as the container. Mantine Button is just a styled div/button.
           */}
-                    <Link href="/auth/register" passHref legacyBehavior>
-                        <Button component="a" size="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-                            Get Started
-                        </Button>
-                    </Link>
-                    <Link href="/auth/login" passHref legacyBehavior>
-                        <Button component="a" size="xl" variant="default">
-                            Login
-                        </Button>
-                    </Link>
+                    <ClientLinkButton href="/auth/register" size="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                        Get Started
+                    </ClientLinkButton>
+                    <ClientLinkButton href="/auth/login" size="xl" variant="default">
+                        Login
+                    </ClientLinkButton>
                 </Group>
             </Stack>
 

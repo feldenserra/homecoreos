@@ -32,7 +32,7 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
                 type="range"
                 placeholder="Pick dates range"
                 value={value}
-                onChange={onChange}
+                onChange={(val) => onChange(val as [Date | null, Date | null])}
                 w={250}
                 clearable
             />

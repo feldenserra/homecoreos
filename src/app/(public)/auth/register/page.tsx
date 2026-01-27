@@ -1,5 +1,5 @@
 import { Container, Title, Text, Anchor } from '@mantine/core';
-import { ClientForm } from '@/components/ClientForm'; // We should probably rename this to RegisterForm eventually
+import { ClientForm } from '@/app/(public)/auth/register/ClientForm'; // We should probably rename this to RegisterForm eventually
 import Link from 'next/link';
 import { ClientLinkAnchor } from '@/components/ClientLinkAnchor';
 

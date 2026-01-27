@@ -1,50 +1,39 @@
 # HomeCoreOS
+**[homecoreos.net](https://homecoreos.net)**
 
-**The modern, secure All-In-One Operating System for your life.**
+## Finding Balance in the Chaos
 
-There are so many things to track and manage in the modern day. No app out there exists that does everything I need it to do — simply, minimally, and effectively.
+There is an constant weight to every day life . From the moment we wake up, we have tasks and issues piled on top . Finding some degree of balance is required .
 
-So I built **HomeCoreOS**.
+I built **HomeCoreOS** because I needed to bring some degree of rhyme and rhythm to that chaos. It is the system I personally use myself .
 
-It is designed to be the single source of truth for your personal life. No more juggling 5 different apps for habits, groceries, tasks, and workouts. HomeCoreOS brings it all together in a private, high-performance workspace.
+...something something...atomic habits...something something...fall to your systems...
 
-> **HomeCore Cloud (Coming Soon)**: All-in-one hosting coming soon... Support the development and get hassle-free hosting, or run it yourself for free below.
+### The All-In-One Operating System for Your Life
+HomeCoreOS is designed to be the single source of truth .
+I've included the things I am personally 'worried' about in life . 
+A better way to say this would be :
+I've included the things I care about in life .
 
-**Updates in perpetuity** 
-**Never see ads.** 
-**Never see micro-transactions.**
+### Features
+*   **✅ Task Management**: Organize, categorize, and track to-dos with a quick, easy interface .
+*   **🏆 Wall of Achievements**: A cool place to celebrate .
+*   **📝 Daily Notes**: Capture your thoughts, clear your mind, and keep a log of your days .
+*   **🍳 Recipe Organizer**: Save recipes, calculate macros, and manage your kitchen .
+*   **📅 Meal Scheduler**: Generate random 7 or 14-day meal plans . ** {Coming Soon} -- Auto Macros, Grocery List, External App Syncs **
+*   **🔐 Private & Secure**: Your data is yours . Protected by enterprise-grade security .
 
-## Features
+---
 
-- **✅ Task Management**: Organize, categorize, and track your to-dos with instant "Optimistic UI".
-- **🍳 Recipe Organizer**: Save recipes, calculate macros, and manage your kitchen.
-- **🔐 Enterprise-Grade Security**: Your data is yours. Protected by Supabase Row Level Security (RLS).
-- **⚡ Hybrid Architecture**: Built with Next.js Server Components for maximum speed and SEO.
+### Getting Started
+This project is **"Semi Open Source" (Fair Code)**. You are free to download and run this code locally **for free** for personal use.
 
-## Roadmap (Coming Soon)
-
-We are actively building the ultimate life-management suite:
-
-- [ ] **🏋️ Workout Tracker**: Log sets, reps, and progress.
-- [ ] **⚖️ Weight & Health**: Track body metrics over time.
-- [ ] **📅 Appointments**: Smart reminders and calendar integration.
-- [ ] **Hz Re-occurring Tasks**: Powerful engine for daily, weekly, or custom repeating tasks.
-- [ ] **📋 Templates**: Save and reuse project structures.
-- [ ] **fw Community Board**: Share and download "Life Packs" (e.g., "Yearly Home Maintenance", "Spring Cleaning Checklist") driven by the community.
-
-## Getting Started
-
-This project is **"Semi Open Source" (Fair Code)**.
-You are free to download and run this code locally **for free** for personal use.
-
-### Prerequisites
-
+#### Prerequisites
 1.  **Node.js** (v18+)
 2.  **Supabase CLI** (for local database)
 3.  **Docker** (required by Supabase)
 
-### Installation
-
+#### Installation
 1.  **Clone the repository:**
     ```bash
     git clone https://github.com/yourusername/homecoreos.git
@@ -73,16 +62,13 @@ You are free to download and run this code locally **for free** for personal use
     ```
     Open [http://localhost:3000](http://localhost:3000).
 
-## License
+---
 
+### License
 **AGPL-3.0 License**
-
-This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
 *   **Free for Personal Use**: Run it on your own machine as much as you want.
 *   **Open Source**: The code is transparent and available.
 *   **Contribution**: If you modify it and run it as a service, you must share your improvements back with the community.
-
----
 
 *Copyright (C) 2026 feldenserra*

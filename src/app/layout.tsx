@@ -1,5 +1,6 @@
 import "./globals.css";
 import { MantineProvider, ColorSchemeScript } from "@mantine/core";
+import { mantineTheme } from "@/lib/theme";
 
 import '@mantine/core/styles.css';
 
@@ -11,10 +12,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <ColorSchemeScript />
+        <ColorSchemeScript defaultColorScheme="dark" />
       </head>
       <body>
-        <MantineProvider>
+        <MantineProvider theme={mantineTheme} defaultColorScheme="dark">
           {children}
         </MantineProvider>
       </body>

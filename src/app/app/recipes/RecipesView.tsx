@@ -19,7 +19,9 @@ import {
     LoadingOverlay,
     Alert,
     Tabs,
-    rem
+    rem,
+    ScrollArea,
+    Box
 } from '@mantine/core';
 import { IconTrash, IconChefHat, IconInfoCircle, IconBook, IconCalendar, IconPlus } from '@tabler/icons-react';
 import { saveRecipe, Ingredient, RecipeInput, getRecipes, deleteRecipe, ProcessedRecipe } from '@/lib/repositories/recipesRepository';
@@ -35,7 +37,7 @@ interface LocalRecipeIngredient {
 }
 
 const COMMON_UOMS = [
-    'g', 'kg', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'pcs', 'slice', 'oz', 'lb'
+    'pcs', 'g', 'oz', 'lb', 'cup', 'tbsp', 'tsp', 'ml', 'slice', 'to taste', 'pinch', 'dash', 'clove', 'sprig', 'stalk', 'can', 'package'
 ];
 
 function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
@@ -71,8 +73,8 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
         setIngredients([...ingredients, {
             ingredientId: ingredient.id,
             name: ingredient.name,
-            quantity: 100,
-            uom: 'g'
+            quantity: 0,
+            uom: 'pcs'
         }]);
     };
 
@@ -170,7 +172,7 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
                                     <Text c="dimmed" fs="italic">No ingredients added yet. Search above to add.</Text>
                                 )}
                                 {ingredients.map((ing, index) => (
-                                    <Group key={ing.ingredientId} justify="space-between" bg="gray.0" p="xs" style={{ borderRadius: 8 }}>
+                                    <Group key={ing.ingredientId} justify="space-between" bg="var(--mantine-color-dimmed)" p="xs" style={{ borderRadius: 8, backgroundColor: 'var(--mantine-color-default)' }}>
                                         <Text fw={500} style={{ flex: 1 }}>{ing.name}</Text>
                                         <Group gap="xs">
                                             <NumberInput
@@ -268,64 +270,84 @@ export function RecipesView() {
     };
 
     return (
-        <Container size="md" py="xl">
-            <Group mb="xl" justify="space-between">
-                <Group>
-                    <IconChefHat size={32} />
-                    <Title order={1}>Recipe Manager</Title>
+        <Container size="xl" py="xl" h="calc(100vh - 80px)">
+            <Stack h="100%" gap="md">
+                <Group justify="space-between">
+                    <Group>
+                        <IconChefHat size={32} />
+                        <Title order={1}>Recipe Manager</Title>
+                    </Group>
                 </Group>
-            </Group>
 
-            <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
-                <Tabs.List mb="md">
-                    <Tabs.Tab value="library" leftSection={<IconBook size={16} />}>
-                        Library
-                    </Tabs.Tab>
-                    <Tabs.Tab value="create" leftSection={<IconPlus size={16} />}>
-                        Create
-                    </Tabs.Tab>
-                    <Tabs.Tab value="schedule" leftSection={<IconCalendar size={16} />}>
-                        Schedule
-                    </Tabs.Tab>
-                </Tabs.List>
+                <Tabs
+                    value={activeTab}
+                    onChange={setActiveTab}
+                    variant="outline"
+                    radius="md"
+                    style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
+                >
+                    <Tabs.List mb="md" style={{ flexShrink: 0 }}>
+                        <Tabs.Tab value="library" leftSection={<IconBook size={16} />}>
+                            Library
+                        </Tabs.Tab>
+                        <Tabs.Tab value="create" leftSection={<IconPlus size={16} />}>
+                            Create
+                        </Tabs.Tab>
+                        <Tabs.Tab value="schedule" leftSection={<IconCalendar size={16} />}>
+                            Schedule
+                        </Tabs.Tab>
+                    </Tabs.List>
 
-                <Tabs.Panel value="library">
-                    {loading ? (
-                        <Text>Loading recipes...</Text>
-                    ) : (
-                        <>
-                            {recipes.length === 0 ? (
-                                <Paper p="xl" withBorder ta="center">
-                                    <Text c="dimmed" mb="md">No recipes found. Create your first one!</Text>
-                                    <Button onClick={() => setActiveTab('create')}>Create Recipe</Button>
-                                </Paper>
-                            ) : (
-                                <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                                    {recipes.map(recipe => (
-                                        <RecipeCard
-                                            key={recipe.id}
-                                            recipe={recipe}
-                                            onDelete={handleDelete}
-                                            onClick={openRecipe}
-                                        />
-                                    ))}
-                                </SimpleGrid>
-                            )}
-                        </>
-                    )}
-                </Tabs.Panel>
+                    <Tabs.Panel value="library" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        <ScrollArea h="100%" type="scroll">
+                            <Box pb="xl">
+                                {loading ? (
+                                    <Text>Loading recipes...</Text>
+                                ) : (
+                                    <>
+                                        {recipes.length === 0 ? (
+                                            <Paper p="xl" withBorder ta="center">
+                                                <Text c="dimmed" mb="md">No recipes found. Create your first one!</Text>
+                                                <Button onClick={() => setActiveTab('create')}>Create Recipe</Button>
+                                            </Paper>
+                                        ) : (
+                                            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                                                {recipes.map(recipe => (
+                                                    <RecipeCard
+                                                        key={recipe.id}
+                                                        recipe={recipe}
+                                                        onDelete={handleDelete}
+                                                        onClick={openRecipe}
+                                                    />
+                                                ))}
+                                            </SimpleGrid>
+                                        )}
+                                    </>
+                                )}
+                            </Box>
+                        </ScrollArea>
+                    </Tabs.Panel>
 
-                <Tabs.Panel value="create">
-                    <CreateRecipeForm onSaved={() => {
-                        loadRecipes();
-                        setActiveTab('library');
-                    }} />
-                </Tabs.Panel>
+                    <Tabs.Panel value="create" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        <ScrollArea h="100%" type="scroll">
+                            <Box pb="xl">
+                                <CreateRecipeForm onSaved={() => {
+                                    loadRecipes();
+                                    setActiveTab('library');
+                                }} />
+                            </Box>
+                        </ScrollArea>
+                    </Tabs.Panel>
 
-                <Tabs.Panel value="schedule">
-                    <MealScheduler recipes={recipes} />
-                </Tabs.Panel>
-            </Tabs>
+                    <Tabs.Panel value="schedule" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        <ScrollArea h="100%" type="scroll">
+                            <Box pb="xl">
+                                <MealScheduler recipes={recipes} />
+                            </Box>
+                        </ScrollArea>
+                    </Tabs.Panel>
+                </Tabs>
+            </Stack>
 
             <RecipeDetailModal
                 opened={modalOpen}

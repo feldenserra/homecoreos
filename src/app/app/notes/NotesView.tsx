@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Title, Paper, Stack, Textarea, Button, Tabs, Text, Group, LoadingOverlay, Alert, ActionIcon } from '@mantine/core';
+import { Container, Title, Paper, Stack, Textarea, Button, Tabs, Text, Group, LoadingOverlay, Alert, ActionIcon, ScrollArea, Box } from '@mantine/core';
 import { IconNote, IconHistory, IconInfoCircle, IconTrash, IconPencil } from '@tabler/icons-react';
 import { createNote, getNotes, deleteNote, Note } from '@/lib/repositories/notesRepository';
 
@@ -65,68 +65,84 @@ export function NotesView() {
     };
 
     return (
-        <Container size="md" py="xl">
-            <Title order={1} mb="xl">Daily Notes</Title>
+        <Container size="xl" py="xl" h="calc(100vh - 80px)">
+            <Stack h="100%" gap="md">
+                <Title order={1}>Daily Notes</Title>
 
-            <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
-                <Tabs.List mb="md">
-                    <Tabs.Tab value="new" leftSection={<IconPencil size={16} />}>
-                        New Note
-                    </Tabs.Tab>
-                    <Tabs.Tab value="history" leftSection={<IconHistory size={16} />}>
-                        History
-                    </Tabs.Tab>
-                </Tabs.List>
+                <Tabs
+                    value={activeTab}
+                    onChange={setActiveTab}
+                    variant="outline"
+                    radius="md"
+                    style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
+                >
+                    <Tabs.List mb="md" style={{ flexShrink: 0 }}>
+                        <Tabs.Tab value="new" leftSection={<IconPencil size={16} />}>
+                            New Note
+                        </Tabs.Tab>
+                        <Tabs.Tab value="history" leftSection={<IconHistory size={16} />}>
+                            History
+                        </Tabs.Tab>
+                    </Tabs.List>
 
-                <Tabs.Panel value="new">
-                    <Paper withBorder p="md" radius="md" pos="relative">
-                        <LoadingOverlay visible={submitting} />
-                        <Stack>
-                            {alert && (
-                                <Alert variant="light" color={alert.color} title={alert.title} icon={<IconInfoCircle />} onClose={() => setAlert(null)} withCloseButton>
-                                    {alert.message}
-                                </Alert>
-                            )}
-                            <Textarea
-                                placeholder="What's on your mind today?"
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.currentTarget.value)}
-                                minRows={6}
-                                autosize
-                                label="Today's Note"
-                            />
-                            <Group justify="flex-end">
-                                <Button onClick={handleSubmit} disabled={!noteText.trim()}>
-                                    Submit Note
-                                </Button>
-                            </Group>
-                        </Stack>
-                    </Paper>
-                </Tabs.Panel>
-
-                <Tabs.Panel value="history">
-                    {loadingHistory ? (
-                        <Text>Loading history...</Text>
-                    ) : (
-                        <Stack gap="md">
-                            {notes.length === 0 && <Text c="dimmed">No notes found.</Text>}
-                            {notes.map(note => (
-                                <Paper key={note.id} withBorder p="md" radius="md">
-                                    <Group justify="space-between" mb="xs">
-                                        <Text size="sm" c="dimmed">
-                                            {new Date(note.created_at || '').toLocaleString()}
-                                        </Text>
-                                        <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(note.id)}>
-                                            <IconTrash size={16} />
-                                        </ActionIcon>
-                                    </Group>
-                                    <Text style={{ whiteSpace: 'pre-line' }}>{note.note}</Text>
+                    <Tabs.Panel value="new" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        <ScrollArea h="100%" type="scroll">
+                            <Box pb="xl">
+                                <Paper withBorder p="md" radius="md" pos="relative">
+                                    <LoadingOverlay visible={submitting} />
+                                    <Stack>
+                                        {alert && (
+                                            <Alert variant="light" color={alert.color} title={alert.title} icon={<IconInfoCircle />} onClose={() => setAlert(null)} withCloseButton>
+                                                {alert.message}
+                                            </Alert>
+                                        )}
+                                        <Textarea
+                                            placeholder="What's on your mind today?"
+                                            value={noteText}
+                                            onChange={(e) => setNoteText(e.currentTarget.value)}
+                                            minRows={6}
+                                            autosize
+                                            label="Today's Note"
+                                        />
+                                        <Group justify="flex-end">
+                                            <Button onClick={handleSubmit} disabled={!noteText.trim()}>
+                                                Submit Note
+                                            </Button>
+                                        </Group>
+                                    </Stack>
                                 </Paper>
-                            ))}
-                        </Stack>
-                    )}
-                </Tabs.Panel>
-            </Tabs>
+                            </Box>
+                        </ScrollArea>
+                    </Tabs.Panel>
+
+                    <Tabs.Panel value="history" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        <ScrollArea h="100%" type="scroll">
+                            <Box pb="xl">
+                                {loadingHistory ? (
+                                    <Text>Loading history...</Text>
+                                ) : (
+                                    <Stack gap="md">
+                                        {notes.length === 0 && <Text c="dimmed">No notes found.</Text>}
+                                        {notes.map(note => (
+                                            <Paper key={note.id} withBorder p="md" radius="md">
+                                                <Group justify="space-between" mb="xs">
+                                                    <Text size="sm" c="dimmed">
+                                                        {new Date(note.created_at || '').toLocaleString()}
+                                                    </Text>
+                                                    <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(note.id)}>
+                                                        <IconTrash size={16} />
+                                                    </ActionIcon>
+                                                </Group>
+                                                <Text style={{ whiteSpace: 'pre-line' }}>{note.note}</Text>
+                                            </Paper>
+                                        ))}
+                                    </Stack>
+                                )}
+                            </Box>
+                        </ScrollArea>
+                    </Tabs.Panel>
+                </Tabs>
+            </Stack>
         </Container>
     );
 }

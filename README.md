@@ -1,34 +1,43 @@
 # HomeCoreOS
 
-**Your Personal Operating System for Productivity.**
+**The modern, secure All-In-One Operating System for your life.**
 
-HomeCoreOS is a modern, secure, and privacy-focused application for managing your life. It combines a powerful task manager, a recipe organizer, and more into a single unified workspace.
+There are so many things to track and manage in the modern day. No app out there exists that does everything I need it to do — simply, minimally, and effectively.
 
-> **Coming Soon:** We are working on a hosted cloud version at **HomeCore.com**. Stay tuned!
+So I built **HomeCoreOS**.
+
+It is designed to be the single source of truth for your personal life. No more juggling 5 different apps for habits, groceries, tasks, and workouts. HomeCoreOS brings it all together in a private, high-performance workspace.
+
+> **HomeCore Cloud (Coming Soon)**: White-glove hosting at **[HomeCore.com](https://homecore.com)**. Support the development and get hassle-free hosting, or run it yourself for free below.
 
 ## Features
 
-- **✅ Task Management**: Organize, categorize, and track your to-dos with an "Optimistic UI" for instant feedback.
-- **🍳 Recipe Organizer**: Save your favorite recipes, calculate macros (calories, protein, etc.), and search ingredients with simulated database lookups.
-- **🔐 Enterprise-Grade Security**: Built on Supabase with strict Row Level Security (RLS). Your data is yours.
-- **⚡ Hybrid Architecture**: Leverages Next.js Server Components for maximum performance and SEO, with isolated Client Components for interactivity.
+- **✅ Task Management**: Organize, categorize, and track your to-dos with instant "Optimistic UI".
+- **🍳 Recipe Organizer**: Save recipes, calculate macros, and manage your kitchen.
+- **🔐 Enterprise-Grade Security**: Your data is yours. Protected by Supabase Row Level Security (RLS).
+- **⚡ Hybrid Architecture**: Built with Next.js Server Components for maximum speed and SEO.
 
-## Tech Stack
+## Roadmap (Coming Soon)
 
-- **Framework**: Next.js 15 (App Router)
-- **Database & Auth**: Supabase (Postgres + Auth)
-- **UI Library**: Mantine UI
-- **Language**: TypeScript
+We are actively building the ultimate life-management suite:
+
+- [ ] **🏋️ Workout Tracker**: Log sets, reps, and progress.
+- [ ] **⚖️ Weight & Health**: Track body metrics over time.
+- [ ] **📅 Appointments**: Smart reminders and calendar integration.
+- [ ] **Hz Re-occurring Tasks**: Powerful engine for daily, weekly, or custom repeating tasks.
+- [ ] **📋 Templates**: Save and reuse project structures.
+- [ ] **fw Community Board**: Share and download "Life Packs" (e.g., "Yearly Home Maintenance", "Spring Cleaning Checklist") driven by the community.
 
 ## Getting Started
 
-This project is "Semi Open Source". You are free to run it locally on your own machine.
+This project is **"Semi Open Source" (Fair Code)**.
+You are free to download and run this code locally **for free** for personal use.
 
 ### Prerequisites
 
-1.  **Node.js** (v18 or higher)
-2.  **Supabase CLI** (for local database setup)
-3.  **Docker** (required by Supabase CLI)
+1.  **Node.js** (v18+)
+2.  **Supabase CLI** (for local database)
+3.  **Docker** (required by Supabase)
 
 ### Installation
 
@@ -43,34 +52,22 @@ This project is "Semi Open Source". You are free to run it locally on your own m
     npm install
     ```
 
-3.  **Setup Local Supabase:**
-    Ensure Docker is running, then start Supabase:
+3.  **Start Local Database:**
     ```bash
     npx supabase start
     ```
-    *This will spin up a local Postgres database, Auth server, and API gateway.*
 
 4.  **Configure Environment:**
-    Copy the example environment file:
     ```bash
     cp .env.example .env
     ```
-    Open `.env` and fill in the values output by the `supabase start` command:
-    - `NEXT_PUBLIC_SUPABASE_URL`: API URL from Supabase CLI output.
-    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`: `anon` key from Supabase CLI output.
+    *Update `.env` with the URL and Anon Key from the Supabase start output.*
 
-5.  **Run the Development Server:**
+5.  **Run Development Server:**
     ```bash
     npm run dev
     ```
-    Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Roadmap
-
-- [x] **Core**: Authentication, Navigation, Settings
-- [x] **Modules**: Tasks, Recipes
-- [ ] **Data Sync**: Offline support
-- [ ] **HomeCore Cloud**: Hosted version (Coming Soon)
+    Open [http://localhost:3000](http://localhost:3000).
 
 ## License
 
@@ -78,9 +75,9 @@ This project is "Semi Open Source". You are free to run it locally on your own m
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
-*   You are free to use, modify, and distribute this software.
-*   If you modify it and run it as a service/website, you **must** provide the source code to your users.
-*   See the `LICENSE` file for full details.
+*   **Free for Personal Use**: Run it on your own machine as much as you want.
+*   **Open Source**: The code is transparent and available.
+*   **Contribution**: If you modify it and run it as a service, you must share your improvements back with the community.
 
 ---
 

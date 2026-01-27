@@ -2,7 +2,7 @@
 
 import { AppShell, Burger, Group, NavLink, Text, ThemeIcon, ScrollArea, Divider, Button } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconHome, IconListCheck, IconChefHat, IconSettings, IconLogout, IconNotebook } from '@tabler/icons-react';
+import { IconHome, IconListCheck, IconChefHat, IconSettings, IconLogout, IconNotebook, IconTrophy } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -15,6 +15,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { icon: IconListCheck, label: 'Tasks', href: '/app/tasks' },
         { icon: IconChefHat, label: 'Recipes', href: '/app/recipes' },
         { icon: IconNotebook, label: 'Notes', href: '/app/notes' },
+        { icon: IconTrophy, label: 'Achievements', href: '/app/achievements' },
     ];
 
     const items = links.map((link) => (
@@ -46,12 +47,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <AppShell.Header>
                 <Group h="100%" px="xs">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
-                    <Group gap="xs">
-                        <ThemeIcon variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-                            <IconHome size={18} />
-                        </ThemeIcon>
-                        <Text fw={700} fz="lg">HomeCoreOS</Text>
-                    </Group>
+                    <Link href="/app" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <Group gap="xs">
+                            <ThemeIcon variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                                <IconHome size={18} />
+                            </ThemeIcon>
+                            <Text fw={700} fz="lg">HomeCoreOS</Text>
+                        </Group>
+                    </Link>
                 </Group>
             </AppShell.Header>
 

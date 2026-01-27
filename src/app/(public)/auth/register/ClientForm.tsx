@@ -78,7 +78,7 @@ export function ClientForm() {
                             <Grid.Col span={{ base: 12, sm: 6 }}>
                                 <TextInput
                                     label="Email Address"
-                                    placeholder="jane.doe@example.com"
+                                    placeholder="matt-inez@example.com"
                                     required
                                     withAsterisk
                                     {...form.getInputProps('email')}

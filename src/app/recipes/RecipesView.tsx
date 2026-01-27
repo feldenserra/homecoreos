@@ -18,7 +18,7 @@ import {
     Flex
 } from '@mantine/core';
 import { IconPlus, IconTrash, IconChefHat } from '@tabler/icons-react';
-import { recipesRepository, Recipe, RecipeIngredient, Ingredient } from '@/lib/repositories/recipesRepository';
+import { searchIngredients, saveRecipe, Recipe, RecipeIngredient, Ingredient } from '@/lib/repositories/recipesRepository';
 
 export function RecipesView() {
     const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
@@ -48,7 +48,7 @@ export function RecipesView() {
             return;
         }
 
-        const results = await recipesRepository.searchIngredients(query);
+        const results = await searchIngredients(query);
         setSearchResults(results.map(i => i.name));
         if (results.length > 0) setActiveIngredient(results[0]);
     };
@@ -80,7 +80,7 @@ export function RecipesView() {
             macros: values.macros
         };
 
-        await recipesRepository.saveRecipe(recipe);
+        await saveRecipe(recipe);
         form.reset();
         setIngredients([]);
         alert('Recipe saved!');

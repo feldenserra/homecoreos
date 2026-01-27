@@ -1,3 +1,5 @@
+'use server';
+
 export interface Ingredient {
     id: string;
     name: string;
@@ -35,27 +37,25 @@ const ingredientsDb: Ingredient[] = [
     { id: 'ing_8', name: 'Onion', calories: 40 },
 ];
 
-export const recipesRepository = {
-    searchIngredients: async (query: string): Promise<Ingredient[]> => {
-        console.log(`[REPO] Searching ingredients for: "${query}"`);
-        await new Promise(resolve => setTimeout(resolve, 300));
+export const searchIngredients = async (query: string): Promise<Ingredient[]> => {
+    console.log(`[REPO] Searching ingredients for: "${query}"`);
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-        if (!query) return [];
+    if (!query) return [];
 
-        return ingredientsDb.filter(ing =>
-            ing.name.toLowerCase().includes(query.toLowerCase())
-        );
-    },
+    return ingredientsDb.filter(ing =>
+        ing.name.toLowerCase().includes(query.toLowerCase())
+    );
+};
 
-    saveRecipe: async (recipe: Recipe): Promise<void> => {
-        console.log('[REPO] Saving recipe...', recipe);
-        console.log('[REPO] Recipe details:', {
-            title: recipe.title,
-            ingredientCount: recipe.ingredients.length,
-            macros: recipe.macros
-        });
-        // Simulate save delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        console.log('[REPO] Recipe saved successfully to database.');
-    }
+export const saveRecipe = async (recipe: Recipe): Promise<void> => {
+    console.log('[REPO] Saving recipe...', recipe);
+    console.log('[REPO] Recipe details:', {
+        title: recipe.title,
+        ingredientCount: recipe.ingredients.length,
+        macros: recipe.macros
+    });
+    // Simulate save delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+    console.log('[REPO] Recipe saved successfully to database.');
 };

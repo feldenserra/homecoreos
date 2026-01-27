@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Stack, Paper, Group, Checkbox, Box, Text, Badge, ActionIcon, SegmentedControl } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
-import { Task, tasksRepository } from '@/lib/repositories/tasksRepository';
+import { Task, toggleTask, deleteTask } from '@/lib/repositories/tasksRepository';
 import { useRouter } from 'next/navigation';
 
 interface TaskListProps {
@@ -29,13 +29,13 @@ export function TaskList({ initialTasks }: TaskListProps) {
             current.map(t => t.id === id ? { ...t, is_complete: newStatus } : t)
         );
 
-        await tasksRepository.toggleTask(id, task.is_complete);
+        await toggleTask(id, task.is_complete);
         router.refresh(); // Sync server data (counts etc)
     };
 
     const handleDeleteTask = async (id: string) => {
         setTasks(current => current.filter(t => t.id !== id));
-        await tasksRepository.deleteTask(id);
+        await deleteTask(id);
         router.refresh();
     };
 

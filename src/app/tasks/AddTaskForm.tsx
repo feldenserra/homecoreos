@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Paper, Flex, TextInput, Select, Button } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import { tasksRepository } from '@/lib/repositories/tasksRepository';
+import { addTask } from '@/lib/repositories/tasksRepository';
 import { useRouter } from 'next/navigation';
 
 export function AddTaskForm() {
@@ -13,7 +13,7 @@ export function AddTaskForm() {
 
     const handleAddTask = async () => {
         if (!title.trim()) return;
-        await tasksRepository.addTask(title, category || 'Uncategorized');
+        await addTask(title, category || 'Uncategorized');
         setTitle('');
         router.refresh();
     };

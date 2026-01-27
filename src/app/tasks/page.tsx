@@ -1,4 +1,4 @@
-import { tasksRepository } from '@/lib/repositories/tasksRepository';
+import { getTasks, getLifetimeCompletedCount } from '@/lib/repositories/tasksRepository';
 import { AddTaskForm } from './AddTaskForm';
 import { TaskList } from './TaskList';
 import { Container, Title, Stack, Group, Paper, ThemeIcon, Box, Text } from '@mantine/core';
@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function TasksPage() {
     const [tasks, count] = await Promise.all([
-        tasksRepository.getTasks(),
-        tasksRepository.getLifetimeCompletedCount()
+        getTasks(),
+        getLifetimeCompletedCount()
     ]);
 
     return (

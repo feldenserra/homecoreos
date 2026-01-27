@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Button, NumberInput, Group, Text, ActionIcon, Modal, TextInput, Select, Stack } from '@mantine/core';
+import { Table, Button, NumberInput, Group, Text, ActionIcon, Modal, TextInput, Select, Stack, ThemeIcon } from '@mantine/core';
 import { IconEdit, IconCheck, IconX, IconPlus } from '@tabler/icons-react';
 import { FinanceCategory, getFinanceCategories, updateCategoryLimit, createFinanceCategory } from '@/lib/repositories/financeRepository';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 
-export function CategoryList() {
+interface CategoryListProps {
+    onUpdate?: () => void;
+}
+
+export function CategoryList({ onUpdate }: CategoryListProps) {
     const [categories, setCategories] = useState<FinanceCategory[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editLimit, setEditLimit] = useState<number | string>(0);
@@ -32,6 +36,7 @@ export function CategoryList() {
             await updateCategoryLimit(id, Number(editLimit));
             setEditingId(null);
             loadCategories();
+            if (onUpdate) onUpdate();
             notifications.show({ title: 'Saved', message: 'Budget limit updated', color: 'green' });
         } catch (error) {
             notifications.show({ title: 'Error', message: 'Failed to update limit', color: 'red' });
@@ -67,14 +72,59 @@ export function CategoryList() {
             createForm.reset();
             loadCategories();
             notifications.show({ title: 'Created', message: 'Category created', color: 'green' });
+        } catch (error: any) {
+            if (error.code === '23505' || error.message?.includes('unique')) {
+                notifications.show({ title: 'Error', message: 'Category name already exists', color: 'red' });
+            } else {
+                notifications.show({ title: 'Error', message: 'Failed to create category', color: 'red' });
+            }
+        }
+    };
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState<FinanceCategory | null>(null);
+
+    const openDeleteModal = (category: FinanceCategory) => {
+        if (category.name.toLowerCase().includes('default')) {
+            notifications.show({ title: 'Cannot Delete', message: 'Default categories cannot be deleted.', color: 'red' });
+            return;
+        }
+        setCategoryToDelete(category);
+        setDeleteModalOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (!categoryToDelete) return;
+        try {
+            const { deleteCategory } = await import('@/lib/repositories/financeRepository');
+            await deleteCategory(categoryToDelete.id, categoryToDelete.type);
+            notifications.show({
+                title: 'Category Deleted',
+                message: `Category deleted. Transactions were reassigned to default ${categoryToDelete.type}.`,
+                color: 'blue'
+            });
+            setDeleteModalOpen(false);
+            setCategoryToDelete(null);
+            setCategoryToDelete(null);
+            loadCategories();
+            if (onUpdate) onUpdate();
         } catch (error) {
-            notifications.show({ title: 'Error', message: 'Failed to create category', color: 'red' });
+            console.error(error);
+            notifications.show({ title: 'Error', message: 'Failed to delete category', color: 'red' });
         }
     };
 
     const rows = categories.map((c) => (
         <Table.Tr key={c.id}>
-            <Table.Td>{c.icon}</Table.Td>
+            <Table.Td>
+                {c.icon ? (
+                    <Text size="xl">{c.icon}</Text>
+                ) : (
+                    <ThemeIcon color={c.type === 'income' ? 'green' : 'red'} variant="light" radius="xl">
+                        {c.type === 'income' ? <IconCheck size={16} /> : <IconX size={16} />}
+                    </ThemeIcon>
+                )}
+            </Table.Td>
             <Table.Td>
                 <Text fw={500}>{c.name}</Text>
                 <Text size="xs" c="dimmed">{c.type}</Text>
@@ -104,6 +154,11 @@ export function CategoryList() {
                         <ActionIcon variant="subtle" size="sm" onClick={() => startEdit(c)}>
                             <IconEdit size={14} />
                         </ActionIcon>
+                        {!c.name.toLowerCase().includes('default') && (
+                            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => openDeleteModal(c)}>
+                                <IconX size={14} />
+                            </ActionIcon>
+                        )}
                     </Group>
                 )}
             </Table.Td>
@@ -112,12 +167,9 @@ export function CategoryList() {
 
     return (
         <Stack>
-            <Group justify="space-between">
-                <Text size="lg" fw={700}>Categories & Budgets</Text>
-                <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => setCreateModalOpened(true)}>
-                    New Category
-                </Button>
-            </Group>
+            <Button variant="outline" leftSection={<IconPlus size={16} />} onClick={() => setCreateModalOpened(true)} maw={200}>
+                New Category
+            </Button>
 
             <Table>
                 <Table.Thead>
@@ -151,6 +203,19 @@ export function CategoryList() {
                         <Button type="submit" mt="md">Create</Button>
                     </Stack>
                 </form>
+            </Modal>
+
+            <Modal opened={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Delete Category" centered>
+                <Text size="sm" mb="lg">
+                    Are you sure you want to delete <b>{categoryToDelete?.name}</b>?
+                    <br /><br />
+                    Any transactions associated with this category will be automatically reassigned to
+                    <b> default {categoryToDelete?.type}</b>.
+                </Text>
+                <Group justify="flex-end">
+                    <Button variant="default" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+                    <Button color="red" onClick={handleDelete}>Delete & Reassign</Button>
+                </Group>
             </Modal>
         </Stack>
     );

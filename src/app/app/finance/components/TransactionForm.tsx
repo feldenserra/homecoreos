@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, TextInput, NumberInput, Select, Stack, Group } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DateInput } from '@mantine/dates';
-import { FinanceCategory, createTransaction, getFinanceCategories } from '@/lib/repositories/financeRepository';
+import { FinanceCategory, FinanceTransaction, createTransaction, updateTransaction, getFinanceCategories } from '@/lib/repositories/financeRepository';
 import { notifications } from '@mantine/notifications';
 
 interface TransactionFormProps {
     opened: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    transaction?: FinanceTransaction | null;
 }
 
-export function TransactionForm({ opened, onClose, onSuccess }: TransactionFormProps) {
+export function TransactionForm({ opened, onClose, onSuccess, transaction }: TransactionFormProps) {
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<FinanceCategory[]>([]);
 
@@ -35,14 +36,23 @@ export function TransactionForm({ opened, onClose, onSuccess }: TransactionFormP
     useEffect(() => {
         if (opened) {
             loadCategories();
-            form.reset();
+            if (transaction) {
+                form.setValues({
+                    description: transaction.description || '',
+                    amount: transaction.amount,
+                    category_id: transaction.category_id || '',
+                    transaction_date: new Date(transaction.transaction_date),
+                });
+            } else {
+                form.reset();
+            }
         }
-    }, [opened]);
+    }, [opened, transaction]);
 
     const loadCategories = async () => {
         try {
             const data = await getFinanceCategories();
-            setCategories(data);
+            setCategories(data || []);
         } catch (error) {
             console.error('Failed to load categories', error);
         }
@@ -51,24 +61,28 @@ export function TransactionForm({ opened, onClose, onSuccess }: TransactionFormP
     const handleSubmit = async (values: typeof form.values) => {
         setLoading(true);
         try {
-            await createTransaction({
+            const payload = {
                 description: values.description,
                 amount: values.amount,
                 category_id: values.category_id,
                 transaction_date: values.transaction_date.toISOString(),
-            });
-            notifications.show({
-                title: 'Success',
-                message: 'Transaction added successfully',
-                color: 'green',
-            });
+            };
+
+            if (transaction) {
+                await updateTransaction(transaction.id, payload);
+                notifications.show({ title: 'Success', message: 'Transaction updated', color: 'green' });
+            } else {
+                await createTransaction(payload);
+                notifications.show({ title: 'Success', message: 'Transaction added', color: 'green' });
+            }
+
             onSuccess();
             onClose();
         } catch (error) {
             console.error(error);
             notifications.show({
                 title: 'Error',
-                message: 'Failed to add transaction',
+                message: 'Failed to save transaction',
                 color: 'red',
             });
         } finally {
@@ -76,13 +90,36 @@ export function TransactionForm({ opened, onClose, onSuccess }: TransactionFormP
         }
     };
 
-    const categoryOptions = categories.map((c) => ({
-        value: c.id,
-        label: `${c.icon || ''} ${c.name} (${c.type})`,
-    }));
+    const categoryOptions = useMemo(() => {
+        if (!categories || !Array.isArray(categories)) return [];
+
+        const expenses = categories
+            .filter(c => c.type === 'expense')
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(c => ({ value: String(c.id), label: `${c.icon || ''} ${c.name}`.trim() }));
+
+        const income = categories
+            .filter(c => c.type === 'income')
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(c => ({ value: String(c.id), label: `${c.icon || ''} ${c.name}`.trim() }));
+
+        const options = [];
+
+        if (expenses.length > 0) {
+            options.push({ value: 'header-expense', label: '--- Expenses ---', disabled: true });
+            options.push(...expenses);
+        }
+
+        if (income.length > 0) {
+            options.push({ value: 'header-income', label: '--- Income ---', disabled: true });
+            options.push(...income);
+        }
+
+        return options;
+    }, [categories]);
 
     return (
-        <Modal opened={opened} onClose={onClose} title="Add Transaction">
+        <Modal opened={opened} onClose={onClose} title={transaction ? "Edit Transaction" : "Add Transaction"}>
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack>
                     <Select
@@ -117,7 +154,7 @@ export function TransactionForm({ opened, onClose, onSuccess }: TransactionFormP
                     />
                     <Group justify="flex-end" mt="md">
                         <Button variant="default" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" loading={loading}>Save</Button>
+                        <Button type="submit" loading={loading}>{transaction ? 'Update' : 'Save'}</Button>
                     </Group>
                 </Stack>
             </form>

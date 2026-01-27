@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, Button, TextInput, NumberInput, Stack, Group } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DateInput } from '@mantine/dates';
 import { createGoal } from '@/lib/repositories/financeRepository';
 import { notifications } from '@mantine/notifications';
+import dayjs from 'dayjs';
 
 interface GoalFormProps {
     opened: boolean;
@@ -28,13 +29,17 @@ export function GoalForm({ opened, onClose, onSuccess }: GoalFormProps) {
         },
     });
 
+    useEffect(() => {
+        if (opened) form.reset();
+    }, [opened]);
+
     const handleSubmit = async (values: typeof form.values) => {
         setLoading(true);
         try {
             await createGoal({
                 title: values.title,
                 target_amount: values.target_amount,
-                deadline: values.deadline ? values.deadline.toISOString() : null,
+                deadline: values.deadline ? dayjs(values.deadline).toISOString() : null,
             });
             notifications.show({
                 title: 'Success',

@@ -141,13 +141,6 @@ export function ClientForm() {
                     </Text>
                 </Stack>
             </form>
-
-            <Box mt="xl">
-                <Text size="xs" fw={700} c="dimmed" mb={5} tt="uppercase">Live Form State:</Text>
-                <Code block p="md" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                    {JSON.stringify(form.values, null, 2)}
-                </Code>
-            </Box>
         </Paper>
     );
 }

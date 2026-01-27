@@ -15,7 +15,6 @@ export function AddTaskForm() {
         if (!title.trim()) return;
         await tasksRepository.addTask(title, category || 'Uncategorized');
         setTitle('');
-        // Refresh the server page to show new data
         router.refresh();
     };
 

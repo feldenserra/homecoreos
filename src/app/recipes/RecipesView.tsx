@@ -83,7 +83,7 @@ export function RecipesView() {
         await recipesRepository.saveRecipe(recipe);
         form.reset();
         setIngredients([]);
-        alert('Recipe saved (simulated)!');
+        alert('Recipe saved!');
     };
 
     return (

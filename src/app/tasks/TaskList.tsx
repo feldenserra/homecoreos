@@ -11,17 +11,12 @@ interface TaskListProps {
 }
 
 export function TaskList({ initialTasks }: TaskListProps) {
-    // We keep local state for immediate optimistic updates, 
-    // but we accept initial data from the server
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
     const [view, setView] = useState<'incomplete' | 'completed'>('incomplete');
     const router = useRouter();
 
-    // Sync if server data changes (optional, but good for router.refresh)
     if (initialTasks !== tasks && initialTasks.length !== tasks.length) {
-        // A simplistic way to update list when parent refreshes
-        // In a real app we might use useEffect or a more robust sync
-        // For this demo, we'll trust the component mount/remount or router.refresh causing re-render
+        // Sync logic if needed
     }
 
     const handleToggleTask = async (id: string) => {
@@ -30,7 +25,6 @@ export function TaskList({ initialTasks }: TaskListProps) {
 
         const newStatus = !task.is_complete;
 
-        // Optimistic update
         setTasks(current =>
             current.map(t => t.id === id ? { ...t, is_complete: newStatus } : t)
         );

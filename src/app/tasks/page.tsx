@@ -18,7 +18,6 @@ export default async function TasksPage() {
                 <Group justify="space-between" align="center">
                     <Title order={1}>My Tasks</Title>
 
-                    {/* Server Rendered Component (Stat Card) */}
                     <Paper withBorder p="xs" radius="md" bg="var(--mantine-color-blue-light)">
                         <Group gap="xs">
                             <ThemeIcon variant="light" color="blue" radius="xl">
@@ -32,10 +31,8 @@ export default async function TasksPage() {
                     </Paper>
                 </Group>
 
-                {/* Client Component 1: The Form */}
                 <AddTaskForm />
 
-                {/* Client Component 2: The List */}
                 <TaskList initialTasks={tasks} />
             </Stack>
         </Container>

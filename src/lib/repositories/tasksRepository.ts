@@ -22,6 +22,8 @@ export const tasksRepository = {
             return [];
         }
 
+        console.log('[REPO] Fetched tasks:', data);
+
         return data as Task[];
     },
 

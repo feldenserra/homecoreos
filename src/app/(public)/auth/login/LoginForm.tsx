@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { getURL } from '@/utils/get-url';
 
 export function LoginForm() {
     const supabase = createClient();
@@ -36,7 +37,7 @@ export function LoginForm() {
             const { error } = await supabase.auth.signInWithOtp({
                 email: form.values.email,
                 options: {
-                    emailRedirectTo: `${location.origin}/auth/callback`,
+                    emailRedirectTo: `${getURL()}auth/callback`,
                 }
             });
 

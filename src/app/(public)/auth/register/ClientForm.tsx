@@ -19,6 +19,7 @@ import { checkUsernameAvailability } from '@/lib/repositories/profileRepository'
 import { Loader } from '@mantine/core';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import { getURL } from '@/utils/get-url';
 
 export function ClientForm() {
     const supabase = createClient();
@@ -75,7 +76,7 @@ export function ClientForm() {
             const { error } = await supabase.auth.signInWithOtp({
                 email: values.email,
                 options: {
-                    emailRedirectTo: `${location.origin}/auth/callback`,
+                    emailRedirectTo: `${getURL()}auth/callback`,
                     data: {
                         username: values.username,
                     }

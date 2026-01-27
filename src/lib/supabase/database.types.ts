@@ -265,6 +265,65 @@ export interface Database {
                     }
                 ]
             }
+            planner_days: {
+                Row: {
+                    id: string
+                    user_id: string
+                    day_name: string
+                    day_index: number
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    day_name: string
+                    day_index: number
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    day_name?: string
+                    day_index?: number
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "planner_days_user_id_fkey"
+                        columns: ["user_id"]
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            planner_tasks: {
+                Row: {
+                    id: string
+                    planner_day_id: string
+                    content: string
+                    position: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    planner_day_id: string
+                    content: string
+                    position?: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    planner_day_id?: string
+                    content?: string
+                    position?: number
+                    created_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "planner_tasks_planner_day_id_fkey"
+                        columns: ["planner_day_id"]
+                        referencedRelation: "planner_days"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
         }
         Views: {
             [_ in never]: never

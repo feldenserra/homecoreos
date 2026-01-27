@@ -13,6 +13,9 @@ export default function Layout({
             <main>
                 {children}
             </main>
+            <footer style={{ padding: '2rem', textAlign: 'center', color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
+                &copy; {new Date().getFullYear()} Feldenserra. All rights reserved.
+            </footer>
             <FloatingThemeToggle />
         </>
     );

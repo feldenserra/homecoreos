@@ -205,6 +205,9 @@ export function SettingsView({ user }: SettingsViewProps) {
                     </Button>
                 </Paper>
             </Paper>
+            <Text c="dimmed" size="xs" ta="center" mt="xl">
+                &copy; {new Date().getFullYear()} Feldenserra. All rights reserved.
+            </Text>
         </Container>
     );
 }

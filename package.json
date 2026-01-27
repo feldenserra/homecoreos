@@ -8,15 +8,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "vercel-build": "next build"
   },
   "dependencies": {
     "@mantine/core": "^8.3.13",
     "@mantine/form": "^8.3.13",
     "@mantine/hooks": "^8.3.13",
     "@mantine/next": "^6.0.22",
-    "@prisma/adapter-pg": "^7.3.0",
-    "@prisma/client": "^7.3.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.93.1",
     "@tabler/icons-react": "^3.36.1",
     "dotenv": "^17.2.3",
     "next": "16.1.5",
@@ -36,7 +36,6 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
-    "prisma": "^7.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

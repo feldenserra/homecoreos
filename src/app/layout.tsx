@@ -1,5 +1,6 @@
 import "./globals.css";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, ColorSchemeScript } from "@mantine/core";
+import { AppLayout } from '@/components/AppLayout';
 import '@mantine/core/styles.css';
 
 export default function RootLayout({
@@ -9,11 +10,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        className="antialiased"
-      >
+      <head>
+        <ColorSchemeScript />
+      </head>
+      <body>
         <MantineProvider>
-          {children}
+          <AppLayout>
+            {children}
+          </AppLayout>
         </MantineProvider>
       </body>
     </html>

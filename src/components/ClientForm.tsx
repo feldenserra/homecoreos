@@ -1,84 +1,152 @@
 'use client';
 
 import { useForm } from '@mantine/form';
-import { Box, Code, Paper, Stack, Group, Title, Text } from '@mantine/core';
-import { Button } from '@/components/Button';
-import { TextInput } from '@/components/TextInput';
-import { PasswordInput } from '@/components/PasswordInput';
-import { Select } from '@/components/Select';
-import { Checkbox } from '@/components/Checkbox';
+import {
+    Box,
+    Code,
+    Paper,
+    Stack,
+    Group,
+    Title,
+    Text,
+    Button,
+    TextInput,
+    PasswordInput,
+    Select,
+    Checkbox,
+    NumberInput,
+    Textarea,
+    Divider,
+    Grid,
+    Switch,
+    SegmentedControl
+} from '@mantine/core';
+import { IconUser, IconLock, IconBriefcase, IconSettings } from '@tabler/icons-react';
+
+import { createClient } from '@/lib/supabase/client';
 
 export function ClientForm() {
+    const supabase = createClient();
     const form = useForm({
         initialValues: {
             email: '',
             username: '',
             password: '',
-            role: '',
-            terms: false,
+            confirmPassword: '',
         },
-
         validate: {
-            email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-            username: (value) => (value.length < 2 ? 'Username must have at least 2 letters' : null),
-            password: (value) => (value.length < 6 ? 'Password must be at least 6 characters' : null),
-            role: (value) => (value ? null : 'Please select a role'),
-            terms: (value) => (value ? null : 'You must accept terms and conditions'),
+            email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
+            username: (val) => (val.length < 4 ? 'Username must be at least 4 characters' : null),
+            password: (val) => (val.length < 8 ? 'Password must be at least 8 characters' : null),
+            confirmPassword: (val, values) => (val !== values.password ? 'Passwords do not match' : null),
         },
     });
 
     return (
-        <Paper withBorder p="lg" radius="md" shadow="sm">
-            <Title order={5} mb="md">Interactive Register Form</Title>
-            <form onSubmit={form.onSubmit((values) => console.log(values))}>
-                <Stack gap="md">
-                    <TextInput
-                        label="Email"
-                        placeholder="your@email.com"
-                        required
-                        {...form.getInputProps('email')}
-                    />
+        <Paper withBorder p="xl" radius="md" shadow="sm" bg="var(--mantine-color-body)">
+            <Title order={3} mb="xl">Comprehensive Registration</Title>
 
-                    <TextInput
-                        label="Username"
-                        placeholder="johndoe"
-                        required
-                        {...form.getInputProps('username')}
-                    />
+            <form onSubmit={form.onSubmit(async (values) => {
+                const { data, error } = await supabase.auth.signUp({
+                    email: values.email,
+                    password: values.password,
+                    options: {
+                        data: {
+                            username: values.username,
+                        }
+                    }
+                });
 
-                    <PasswordInput
-                        label="Password"
-                        placeholder="Your password"
-                        required
-                        {...form.getInputProps('password')}
-                    />
+                if (error) {
+                    console.error('Signup error:', error);
+                    alert(`Error signing up: ${error.message}`);
+                } else {
+                    console.log('Signup successful:', data);
+                    alert('Registration successful! Check your email for verification (or if dev mode, just login).');
+                }
+            })}>
+                <Stack gap="xl">
 
-                    <Select
-                        label="Role"
-                        placeholder="Pick one"
-                        data={[
-                            { value: 'admin', label: 'Admin' },
-                            { value: 'user', label: 'User' },
-                            { value: 'guest', label: 'Guest' },
-                        ]}
-                        required
-                        {...form.getInputProps('role')}
-                    />
+                    {/* Section 1: Personal Information */}
+                    <Box>
+                        <Group mb="md">
+                            <IconUser size={20} color="var(--mantine-color-blue-6)" />
+                            <Title order={5}>Personal Information</Title>
+                        </Group>
+                        <Grid>
 
-                    <Checkbox
-                        label="I agree to terms and conditions"
-                        {...form.getInputProps('terms', { type: 'checkbox' })}
-                    />
+                            <Grid.Col span={{ base: 12, sm: 6 }}>
+                                <TextInput
+                                    label="Email Address"
+                                    placeholder="jane.doe@example.com"
+                                    required
+                                    withAsterisk
+                                    {...form.getInputProps('email')}
+                                />
+                            </Grid.Col>
+
+                        </Grid>
+                    </Box>
+
+                    <Divider />
+
+                    {/* Section 2: Account Security */}
+                    <Box>
+                        <Group mb="md">
+                            <IconLock size={20} color="var(--mantine-color-red-6)" />
+                            <Title order={5}>Account Security</Title>
+                        </Group>
+                        <Stack gap="md">
+                            <TextInput
+                                label="Username"
+                                description="This will be your unique handle on the platform"
+                                placeholder="janedoe_dev"
+                                required
+                                withAsterisk
+                                {...form.getInputProps('username')}
+                            />
+                            <Grid>
+                                <Grid.Col span={{ base: 12, sm: 6 }}>
+                                    <PasswordInput
+                                        label="Password"
+                                        placeholder="Create a strong password"
+                                        required
+                                        withAsterisk
+                                        {...form.getInputProps('password')}
+                                    />
+                                </Grid.Col>
+                                <Grid.Col span={{ base: 12, sm: 6 }}>
+                                    <PasswordInput
+                                        label="Confirm Password"
+                                        placeholder="Confirm your password"
+                                        required
+                                        withAsterisk
+                                        {...form.getInputProps('confirmPassword')}
+                                    />
+                                </Grid.Col>
+                            </Grid>
+                        </Stack>
+                    </Box>
+
+                    <Divider />
 
                     <Group justify="flex-end" mt="md">
-                        <Button type="submit">Register</Button>
+                        <Button variant="default" onClick={() => form.reset()}>Reset</Button>
+                        <Button type="submit" size="md">Create Account</Button>
                     </Group>
+
+                    <Text ta="right" size="sm" mt="sm">
+                        <b>Note:</b> This registers a new user in Supabase.
+                        Once registered, you can create Tasks which are secured by RLS.
+                    </Text>
                 </Stack>
             </form>
 
-            <Box mt="lg">
-                <Text size="xs" fw={500} mb={5}>Real-time State (Client-side):</Text>
-                <Code block>{JSON.stringify(form.values, null, 2)}</Code>
+            <Box mt="xl">
+                <Text size="xs" fw={700} c="dimmed" mb={5} tt="uppercase">Live Form State:</Text>
+                <Code block p="md" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {JSON.stringify(form.values, null, 2)}
+                </Code>
             </Box>
         </Paper>
     );

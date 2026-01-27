@@ -12,7 +12,7 @@ export interface PlannerDayWithTasks extends PlannerDayRow {
 
 export const getPlannerData = async (): Promise<PlannerDayWithTasks[]> => {
     const supabase = await createClient();
-    
+
     // First ensure days exist
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -35,14 +35,14 @@ export const getPlannerData = async (): Promise<PlannerDayWithTasks[]> => {
     // Sort tasks by position or created_at within each day
     const sortedData = data?.map(day => ({
         ...day,
-        planner_tasks: day.planner_tasks.sort((a, b) => {
-             // If we had a position field we would use it, falling back to created_at
-             // For now, let's assume created_at is consistent enough, or add position handling if schema has it.
-             // The user schema showed 'position' int default 0.
-             if (a.position !== b.position) {
-                 return (a.position || 0) - (b.position || 0);
-             }
-             return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        planner_tasks: (day.planner_tasks as PlannerTaskRow[]).sort((a: PlannerTaskRow, b: PlannerTaskRow) => {
+            // If we had a position field we would use it, falling back to created_at
+            // For now, let's assume created_at is consistent enough, or add position handling if schema has it.
+            // The user schema showed 'position' int default 0.
+            if (a.position !== b.position) {
+                return (a.position || 0) - (b.position || 0);
+            }
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         })
     })) as PlannerDayWithTasks[];
 
@@ -51,7 +51,7 @@ export const getPlannerData = async (): Promise<PlannerDayWithTasks[]> => {
 
 export const ensureWeekDays = async (userId: string) => {
     const supabase = await createClient();
-    
+
     // Check if days exist
     const { count } = await supabase
         .from('planner_days')
@@ -90,7 +90,7 @@ export const ensureWeekDays = async (userId: string) => {
 
 export const addPlannerTask = async (dayId: string, content: string): Promise<PlannerTaskRow | null> => {
     const supabase = await createClient();
-    
+
     // Get max position for the day to append to bottom
     // Optimization: could be done in a trigger or just query.
     // simpler: select max position
@@ -101,7 +101,7 @@ export const addPlannerTask = async (dayId: string, content: string): Promise<Pl
         .order('position', { ascending: false })
         .limit(1)
         .single();
-    
+
     const newPosition = (maxPosData?.position ?? -1) + 1;
 
     const { data, error } = await supabase
@@ -128,7 +128,7 @@ export const deletePlannerTask = async (taskId: string): Promise<void> => {
         .from('planner_tasks')
         .delete()
         .eq('id', taskId);
-        
+
     if (error) {
         console.error('[PlannerRepo] Error deleting task:', error);
     }

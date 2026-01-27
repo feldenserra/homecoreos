@@ -21,9 +21,8 @@ export function SettingsView({ user }: SettingsViewProps) {
                     </Avatar>
                     <Stack gap={0}>
                         <Title order={3}>
-                            {metadata.first_name || 'User'} {metadata.last_name || ''}
+                            @{metadata.username || 'username'}
                         </Title>
-                        <Text c="dimmed">@{metadata.username || 'username'}</Text>
                     </Stack>
                 </Group>
 
@@ -32,21 +31,6 @@ export function SettingsView({ user }: SettingsViewProps) {
                 <Group justify="space-between" mb="xs">
                     <Text fw={500}>Email</Text>
                     <Text>{user.email}</Text>
-                </Group>
-                <Group justify="space-between" mb="xs">
-                    <Text fw={500}>Phone</Text>
-                    <Text>{metadata.phone || 'Not provided'}</Text>
-                </Group>
-
-                <Divider my="md" label="Professional" labelPosition="left" />
-
-                <Group justify="space-between" mb="xs">
-                    <Text fw={500}>Job Title</Text>
-                    <Text>{metadata.job_title || 'N/A'}</Text>
-                </Group>
-                <Group justify="space-between" mb="xs">
-                    <Text fw={500}>Experience</Text>
-                    <Text>{metadata.experience_years ? `${metadata.experience_years} years` : 'N/A'}</Text>
                 </Group>
 
                 <Divider my="md" />

@@ -123,6 +123,34 @@ export interface Database {
                     }
                 ]
             }
+            notes: {
+                Row: {
+                    id: string
+                    user_id: string
+                    note: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id?: string
+                    note: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    note?: string
+                    created_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "notes_user_id_fkey"
+                        columns: ["user_id"]
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
         }
         Views: {
             [_ in never]: never

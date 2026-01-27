@@ -1,6 +1,6 @@
 import "./globals.css";
 import { MantineProvider, ColorSchemeScript } from "@mantine/core";
-import { AppLayout } from '@/components/AppLayout';
+
 import '@mantine/core/styles.css';
 
 export default function RootLayout({
@@ -15,9 +15,7 @@ export default function RootLayout({
       </head>
       <body>
         <MantineProvider>
-          <AppLayout>
-            {children}
-          </AppLayout>
+          {children}
         </MantineProvider>
       </body>
     </html>

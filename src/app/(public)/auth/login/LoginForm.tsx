@@ -15,15 +15,18 @@ export function LoginForm() {
     const [error, setError] = useState<string | null>(null);
     const [codeSent, setCodeSent] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [loginType, setLoginType] = useState<'otp' | 'password'>('otp');
 
     const form = useForm({
         initialValues: {
             email: '',
             token: '',
+            password: '',
         },
         validate: {
             email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-            token: (value) => (codeSent && value.length < 6 ? 'Code must be at least 6 digits' : null),
+            token: (value) => (loginType === 'otp' && codeSent && value.length < 6 ? 'Code must be at least 6 digits' : null),
+            password: (value) => (loginType === 'password' && value.length < 1 ? 'Password is required' : null),
         },
     });
 
@@ -70,6 +73,25 @@ export function LoginForm() {
         }
     };
 
+    const handlePasswordLogin = async (values: typeof form.values) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email: values.email,
+                password: values.password,
+            });
+
+            if (error) throw error;
+
+            router.push('/app');
+            router.refresh();
+        } catch (err: any) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
     return (
         <Paper withBorder shadow="md" p={30} mt={30} radius="md">
             {error && (
@@ -78,37 +100,69 @@ export function LoginForm() {
                 </Alert>
             )}
 
-            {!codeSent ? (
-                <form onSubmit={(e) => { e.preventDefault(); handleSendCode(); }}>
+            {loginType === 'otp' ? (
+                !codeSent ? (
+                    <form onSubmit={(e) => { e.preventDefault(); handleSendCode(); }}>
+                        <TextInput
+                            label="Email"
+                            placeholder="matt.inez@email.com"
+                            required
+                            {...form.getInputProps('email')}
+                        />
+                        <Button fullWidth mt="xl" type="submit" loading={loading}>
+                            Send Login Code
+                        </Button>
+                        <Group justify="center" mt="md">
+                            <Anchor component="button" size="sm" type="button" c="dimmed" onClick={() => setLoginType('password')}>
+                                Login with password
+                            </Anchor>
+                        </Group>
+                    </form>
+                ) : (
+                    <form onSubmit={form.onSubmit(handleVerifyCode)}>
+                        <Text size="sm" ta="center" mb="md">
+                            Enter the code sent to <b>{form.values.email}</b>
+                        </Text>
+                        <TextInput
+                            label="Login Code"
+                            placeholder="123456"
+                            required
+                            maxLength={8}
+                            data-autofocus
+                            {...form.getInputProps('token')}
+                        />
+                        <Button fullWidth mt="xl" type="submit" loading={loading}>
+                            Verify & Login
+                        </Button>
+                        <Group justify="center" mt="md">
+                            <Anchor component="button" size="sm" type="button" c="dimmed" onClick={() => setCodeSent(false)}>
+                                Use a different email
+                            </Anchor>
+                        </Group>
+                    </form>
+                )
+            ) : (
+                <form onSubmit={form.onSubmit(handlePasswordLogin)}>
                     <TextInput
                         label="Email"
                         placeholder="matt.inez@email.com"
                         required
                         {...form.getInputProps('email')}
                     />
-                    <Button fullWidth mt="xl" type="submit" loading={loading}>
-                        Send Login Code
-                    </Button>
-                </form>
-            ) : (
-                <form onSubmit={form.onSubmit(handleVerifyCode)}>
-                    <Text size="sm" ta="center" mb="md">
-                        Enter the code sent to <b>{form.values.email}</b>
-                    </Text>
                     <TextInput
-                        label="Login Code"
-                        placeholder="123456"
+                        label="Password"
+                        placeholder="Your password"
                         required
-                        maxLength={8}
-                        data-autofocus
-                        {...form.getInputProps('token')}
+                        mt="md"
+                        type="password"
+                        {...form.getInputProps('password')}
                     />
                     <Button fullWidth mt="xl" type="submit" loading={loading}>
-                        Verify & Login
+                        Login
                     </Button>
                     <Group justify="center" mt="md">
-                        <Anchor component="button" size="sm" type="button" c="dimmed" onClick={() => setCodeSent(false)}>
-                            Use a different email
+                        <Anchor component="button" size="sm" type="button" c="dimmed" onClick={() => setLoginType('otp')}>
+                            Login with email code
                         </Anchor>
                     </Group>
                 </form>

@@ -35,10 +35,12 @@ export function ClientForm() {
         initialValues: {
             email: '',
             username: '',
+            password: '',
         },
         validate: {
             email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
             username: (val) => (val.length < 3 ? 'Username must be at least 3 characters' : null),
+            password: (val) => (val.length < 6 ? 'Password must be at least 6 characters' : null),
         },
     });
 
@@ -72,9 +74,10 @@ export function ClientForm() {
         }
 
         try {
-            // Using signInWithOtp for registration as well
-            const { error } = await supabase.auth.signInWithOtp({
+            // Use signUp with password
+            const { error: signUpError } = await supabase.auth.signUp({
                 email: values.email,
+                password: values.password,
                 options: {
                     emailRedirectTo: `${getURL()}auth/callback`,
                     data: {
@@ -83,7 +86,7 @@ export function ClientForm() {
                 }
             });
 
-            if (error) throw error;
+            if (signUpError) throw signUpError;
 
             setSuccess(true);
         } catch (err: any) {
@@ -124,7 +127,7 @@ export function ClientForm() {
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="xl">
                     <Text size="sm" c="dimmed">
-                        We use passwordless login. Key in your email and choose a username to get started.
+                        Key in your email, choose a username and password to get started.
                     </Text>
 
                     <TextInput
@@ -143,6 +146,14 @@ export function ClientForm() {
                         placeholder="matt.inez@email.com"
                         required
                         {...form.getInputProps('email')}
+                    />
+
+                    <TextInput
+                        label="Password"
+                        placeholder="Your password"
+                        type="password"
+                        required
+                        {...form.getInputProps('password')}
                     />
 
                     <Divider />

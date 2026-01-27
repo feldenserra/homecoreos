@@ -13,51 +13,26 @@ export function LoginForm() {
     const supabase = createClient();
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
-    const [codeSent, setCodeSent] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const form = useForm({
         initialValues: {
             email: '',
-            token: '',
+            password: '',
         },
         validate: {
             email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-            token: (value) => (codeSent && value.length < 6 ? 'Code must be at least 6 digits' : null),
+            password: (value) => (value.length < 1 ? 'Password is required' : null),
         },
     });
 
-    const handleSendCode = async () => {
-        const { hasErrors } = form.validate();
-        if (hasErrors) return;
-
+    const handleLogin = async (values: typeof form.values) => {
         setLoading(true);
         setError(null);
         try {
-            const { error } = await supabase.auth.signInWithOtp({
-                email: form.values.email,
-                options: {
-                    emailRedirectTo: `${getURL()}auth/callback`,
-                }
-            });
-
-            if (error) throw error;
-            setCodeSent(true);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleVerifyCode = async (values: typeof form.values) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const { error } = await supabase.auth.verifyOtp({
+            const { error } = await supabase.auth.signInWithPassword({
                 email: values.email,
-                token: values.token,
-                type: 'email'
+                password: values.password,
             });
 
             if (error) throw error;
@@ -78,41 +53,25 @@ export function LoginForm() {
                 </Alert>
             )}
 
-            {!codeSent ? (
-                <form onSubmit={(e) => { e.preventDefault(); handleSendCode(); }}>
-                    <TextInput
-                        label="Email"
-                        placeholder="matt.inez@email.com"
-                        required
-                        {...form.getInputProps('email')}
-                    />
-                    <Button fullWidth mt="xl" type="submit" loading={loading}>
-                        Send Login Code
-                    </Button>
-                </form>
-            ) : (
-                <form onSubmit={form.onSubmit(handleVerifyCode)}>
-                    <Text size="sm" ta="center" mb="md">
-                        Enter the code sent to <b>{form.values.email}</b>
-                    </Text>
-                    <TextInput
-                        label="Login Code"
-                        placeholder="123456"
-                        required
-                        maxLength={8}
-                        data-autofocus
-                        {...form.getInputProps('token')}
-                    />
-                    <Button fullWidth mt="xl" type="submit" loading={loading}>
-                        Verify & Login
-                    </Button>
-                    <Group justify="center" mt="md">
-                        <Anchor component="button" size="sm" type="button" c="dimmed" onClick={() => setCodeSent(false)}>
-                            Use a different email
-                        </Anchor>
-                    </Group>
-                </form>
-            )}
+            <form onSubmit={form.onSubmit(handleLogin)}>
+                <TextInput
+                    label="Email"
+                    placeholder="matt.inez@email.com"
+                    required
+                    {...form.getInputProps('email')}
+                />
+                <TextInput
+                    label="Password"
+                    placeholder="Your password"
+                    required
+                    mt="md"
+                    type="password"
+                    {...form.getInputProps('password')}
+                />
+                <Button fullWidth mt="xl" type="submit" loading={loading}>
+                    Login
+                </Button>
+            </form>
         </Paper>
     );
 }

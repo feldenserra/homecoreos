@@ -21,6 +21,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { getURL } from '@/utils/get-url';
 
+// ... (imports remain the same, just removing unused)
 export function ClientForm() {
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
@@ -35,10 +36,14 @@ export function ClientForm() {
         initialValues: {
             email: '',
             username: '',
+            password: '',
+            confirmPassword: '',
         },
         validate: {
             email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
             username: (val) => (val.length < 3 ? 'Username must be at least 3 characters' : null),
+            password: (val) => (val.length < 6 ? 'Password must be at least 6 characters' : null),
+            confirmPassword: (val, values) => (val !== values.password ? 'Passwords do not match' : null),
         },
     });
 
@@ -72,9 +77,9 @@ export function ClientForm() {
         }
 
         try {
-            // Using signInWithOtp for registration as well
-            const { error } = await supabase.auth.signInWithOtp({
+            const { error: signUpError } = await supabase.auth.signUp({
                 email: values.email,
+                password: values.password,
                 options: {
                     emailRedirectTo: `${getURL()}auth/callback`,
                     data: {
@@ -83,7 +88,7 @@ export function ClientForm() {
                 }
             });
 
-            if (error) throw error;
+            if (signUpError) throw signUpError;
 
             setSuccess(true);
         } catch (err: any) {
@@ -98,11 +103,9 @@ export function ClientForm() {
                 <ThemeIcon size={60} radius={60} color="green" variant="light" mb="md">
                     <IconCheck size={30} />
                 </ThemeIcon>
-                <Title order={2} mb="md">Check your email!</Title>
+                <Title order={2} mb="md">Registration Successful!</Title>
                 <Text c="dimmed" size="sm" mb="xl">
-                    We've sent a login code to <b>{form.values.email}</b>.
-                    <br />
-                    Click the link or enter the code to verify your account.
+                    Please check your email to confirm your account.
                 </Text>
                 <Button component={Link} href="/auth/login" fullWidth variant="outline">
                     Go to Login
@@ -122,9 +125,9 @@ export function ClientForm() {
             )}
 
             <form onSubmit={form.onSubmit(handleSubmit)}>
-                <Stack gap="xl">
+                <Stack gap="md">
                     <Text size="sm" c="dimmed">
-                        We use passwordless login. Key in your email and choose a username to get started.
+                        Create an account to get started.
                     </Text>
 
                     <TextInput
@@ -145,7 +148,23 @@ export function ClientForm() {
                         {...form.getInputProps('email')}
                     />
 
-                    <Divider />
+                    <TextInput
+                        label="Password"
+                        placeholder="Your password"
+                        required
+                        type="password"
+                        {...form.getInputProps('password')}
+                    />
+
+                    <TextInput
+                        label="Confirm Password"
+                        placeholder="Confirm password"
+                        required
+                        type="password"
+                        {...form.getInputProps('confirmPassword')}
+                    />
+
+                    <Divider mt="xs" />
 
                     <Group justify="flex-end" mt="md">
                         <Button variant="default" component={Link} href="/auth/login">Back to Login</Button>

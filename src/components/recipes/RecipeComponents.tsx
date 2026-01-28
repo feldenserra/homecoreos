@@ -11,13 +11,35 @@ interface RecipeDetailModalProps {
     recipe: ProcessedRecipe | null;
     opened: boolean;
     onClose: () => void;
+    onEdit?: (recipe: ProcessedRecipe) => void;
 }
 
-export function RecipeDetailModal({ recipe, opened, onClose }: RecipeDetailModalProps) {
+export function RecipeDetailModal({ recipe, opened, onClose, onEdit }: RecipeDetailModalProps) {
     if (!recipe) return null;
 
     return (
-        <Modal opened={opened} onClose={onClose} title={<Text fw={700} size="lg">{recipe.title}</Text>} size="lg" centered>
+        <Modal
+            opened={opened}
+            onClose={onClose}
+            title={
+                <Group>
+                    <Text fw={700} size="lg">{recipe.title}</Text>
+                    {onEdit && (
+                        <Button
+                            variant="light"
+                            color="blue"
+                            size="xs"
+                            leftSection={<IconTools size={14} />}
+                            onClick={() => onEdit(recipe)}
+                        >
+                            Edit Recipe
+                        </Button>
+                    )}
+                </Group>
+            }
+            size="lg"
+            centered
+        >
             <Stack gap="md">
                 {/* Header Stats */}
                 <Group justify="space-between" bg="gray.1" p="sm" style={{ borderRadius: 8 }}>

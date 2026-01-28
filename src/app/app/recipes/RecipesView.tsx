@@ -23,7 +23,8 @@ import {
     ScrollArea,
     Box
 } from '@mantine/core';
-import { IconTrash, IconChefHat, IconInfoCircle, IconBook, IconCalendar, IconPlus } from '@tabler/icons-react';
+import { Notifications, notifications } from '@mantine/notifications';
+import { IconTrash, IconChefHat, IconInfoCircle, IconBook, IconCalendar, IconPlus, IconTools, IconCheck, IconX } from '@tabler/icons-react';
 import { saveRecipe, Ingredient, RecipeInput, getRecipes, deleteRecipe, ProcessedRecipe } from '@/lib/repositories/recipesRepository';
 import { IngredientSelect } from '@/components/recipes/IngredientSelect';
 import { RecipeCard, RecipeDetailModal, MealScheduler } from '@/components/recipes/RecipeComponents';
@@ -40,21 +41,35 @@ const COMMON_UOMS = [
     'pcs', 'g', 'oz', 'lb', 'cup', 'tbsp', 'tsp', 'ml', 'slice', 'to taste', 'pinch', 'dash', 'clove', 'sprig', 'stalk', 'can', 'package'
 ];
 
-function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
-    const [ingredients, setIngredients] = useState<LocalRecipeIngredient[]>([]);
+interface RecipeFormProps {
+    initialData?: ProcessedRecipe | null;
+    onSaved: () => void;
+    onDelete?: (id: string) => void;
+    onCancel?: () => void;
+}
+
+function RecipeForm({ initialData, onSaved, onDelete, onCancel }: RecipeFormProps) {
+    const isEditing = !!initialData;
+    const [ingredients, setIngredients] = useState<LocalRecipeIngredient[]>(
+        initialData?.ingredients?.map(ing => ({
+            ingredientId: ing.id,
+            name: ing.name,
+            quantity: ing.quantity,
+            uom: ing.uom
+        })) || []
+    );
     const [submitting, setSubmitting] = useState(false);
-    const [alert, setAlert] = useState<{ title: string; message: string; color: string } | null>(null);
 
     const form = useForm({
         initialValues: {
-            title: '',
-            cook_method: '',
-            instructions: '',
+            title: initialData?.title || '',
+            cook_method: initialData?.cook_method || '',
+            instructions: initialData?.instructions || '',
             macros: {
-                calories: 0,
-                protein: 0,
-                carbs: 0,
-                fats: 0,
+                calories: initialData?.calories || 0,
+                protein: initialData?.protein_g || 0,
+                carbs: initialData?.carbs_g || 0,
+                fats: initialData?.fat_g || 0,
             }
         },
         validate: {
@@ -65,9 +80,35 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
                 carbs: (val) => (val < 0 ? 'Carbs must be at least 0' : null),
                 fats: (val) => (val < 0 ? 'Fats must be at least 0' : null),
             },
-            instructions: (val) => (val.length < 5 ? 'Instructions must be at least 5 characters' : null),
+            instructions: (val) => (val?.length < 5 ? 'Instructions must be at least 5 characters' : null),
         }
     });
+
+    // Reset form when initialData changes (important for switching between create/edit modes without unmounting)
+    useEffect(() => {
+        if (initialData) {
+            form.setValues({
+                title: initialData.title,
+                cook_method: initialData.cook_method || '',
+                instructions: initialData.instructions || '',
+                macros: {
+                    calories: initialData.calories,
+                    protein: initialData.protein_g,
+                    carbs: initialData.carbs_g,
+                    fats: initialData.fat_g,
+                }
+            });
+            setIngredients(initialData.ingredients.map(ing => ({
+                ingredientId: ing.id,
+                name: ing.name,
+                quantity: ing.quantity,
+                uom: ing.uom
+            })));
+        } else {
+            form.reset();
+            setIngredients([]);
+        }
+    }, [initialData]);
 
     const handleSelectIngredient = (ingredient: Ingredient) => {
         setIngredients([...ingredients, {
@@ -88,9 +129,15 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
         setIngredients(ingredients.filter((_, i) => i !== index));
     };
 
+    const handleDelete = () => {
+        if (!initialData || !onDelete) return;
+        if (confirm('Are you sure you want to delete this recipe?')) {
+            onDelete(initialData.id);
+        }
+    };
+
     const handleSubmit = async (values: typeof form.values) => {
         setSubmitting(true);
-        setAlert(null);
         try {
             const recipe: RecipeInput = {
                 title: values.title,
@@ -104,25 +151,37 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
                 macros: values.macros
             };
 
-            await saveRecipe(recipe);
+            if (isEditing && initialData) {
+                const { updateRecipe } = await import('@/lib/repositories/recipesRepository');
+                await updateRecipe(initialData.id, recipe);
+            } else {
+                await saveRecipe(recipe);
+            }
 
-            setAlert({
+            notifications.show({
                 title: 'Success',
-                message: 'Recipe saved successfully!',
-                color: 'green'
+                message: `Recipe ${isEditing ? 'updated' : 'saved'} successfully!`,
+                color: 'green',
+                icon: <IconCheck size={18} />,
             });
 
-            form.reset();
-            setIngredients([]);
+            if (!isEditing) {
+                form.reset();
+                setIngredients([]);
+            }
+
             onSaved(); // Notify parent to switch tabs or refresh
-            setTimeout(() => setAlert(null), 3000);
+
+            // If editing, we might want to stay or close, but let's refresh list 
+            // relying on parent callback usually.
 
         } catch (error) {
             console.error(error);
-            setAlert({
+            notifications.show({
                 title: 'Error',
-                message: 'Failed to save recipe',
-                color: 'red'
+                message: `Failed to ${isEditing ? 'update' : 'save'} recipe`,
+                color: 'red',
+                icon: <IconX size={18} />,
             });
         } finally {
             setSubmitting(false);
@@ -132,14 +191,21 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
     return (
         <Stack gap="lg" pos="relative">
             <LoadingOverlay visible={submitting} />
-            {alert && (
-                <Alert variant="light" color={alert.color} title={alert.title} icon={<IconInfoCircle />} onClose={() => setAlert(null)} withCloseButton>
-                    {alert.message}
-                </Alert>
-            )}
 
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="lg">
+                    {/* Header Row for Title and Cancel/Delete */}
+                    <Group justify="space-between" align="start">
+                        <Title order={3}>{isEditing ? 'Edit Recipe' : 'Create New Recipe'}</Title>
+                        {isEditing && (
+                            <Group>
+                                <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={handleDelete}>
+                                    Delete Recipe
+                                </Button>
+                            </Group>
+                        )}
+                    </Group>
+
                     {/* Basic Info */}
                     <Paper withBorder p="md" radius="md">
                         <Stack>
@@ -221,9 +287,12 @@ function CreateRecipeForm({ onSaved }: { onSaved: () => void }) {
                         </SimpleGrid>
                     </Paper>
 
-                    <Button type="submit" size="lg" fullWidth>
-                        Save Recipe
-                    </Button>
+                    <Group justify="flex-end">
+                        {onCancel && <Button variant="default" onClick={onCancel}>Cancel</Button>}
+                        <Button type="submit" size="lg" w={isEditing ? 'auto' : '100%'}>
+                            {isEditing ? 'Update Recipe' : 'Save Recipe'}
+                        </Button>
+                    </Group>
                 </Stack>
             </form>
         </Stack>
@@ -240,6 +309,12 @@ export function RecipesView() {
     // Modal State
     const [selectedRecipe, setSelectedRecipe] = useState<ProcessedRecipe | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
+
+    // Editing State
+    const [editingRecipe, setEditingRecipe] = useState<ProcessedRecipe | null>(null);
+
+    // Form session key to force reset on new visits
+    const [formSession, setFormSession] = useState(0);
 
     const loadRecipes = async () => {
         setLoading(true);
@@ -261,12 +336,37 @@ export function RecipesView() {
         const success = await deleteRecipe(id);
         if (success) {
             setRecipes(recipes.filter(r => r.id !== id));
+            if (editingRecipe?.id === id) {
+                setEditingRecipe(null);
+                setActiveTab('library');
+            }
         }
     };
 
     const openRecipe = (recipe: ProcessedRecipe) => {
         setSelectedRecipe(recipe);
         setModalOpen(true);
+    };
+
+    const handleEditRecipe = (recipe: ProcessedRecipe) => {
+        setEditingRecipe(recipe);
+        setModalOpen(false);
+        // We do NOT increment formSession here because we want to mount with initialData, 
+        // which the form handles via useEffect. But strictly speaking, a new key is fine too.
+        // Let's keep it simple: any entry to 'create' can have a fresh key if we want.
+        // But if we pass initialData, the form will hydrate from it.
+        setActiveTab('create');
+    };
+
+    const onTabChange = (value: string | null) => {
+        if (value !== 'create') {
+            setEditingRecipe(null);
+        } else {
+            // Entering create mode. If we're not editing (or even if we are), 
+            // we might want a fresh mount to ensure no stale state.
+            setFormSession(s => s + 1);
+        }
+        setActiveTab(value);
     };
 
     return (
@@ -281,7 +381,7 @@ export function RecipesView() {
 
                 <Tabs
                     value={activeTab}
-                    onChange={setActiveTab}
+                    onChange={onTabChange}
                     variant="outline"
                     radius="md"
                     style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
@@ -290,8 +390,8 @@ export function RecipesView() {
                         <Tabs.Tab value="library" leftSection={<IconBook size={16} />}>
                             Library
                         </Tabs.Tab>
-                        <Tabs.Tab value="create" leftSection={<IconPlus size={16} />}>
-                            Create
+                        <Tabs.Tab value="create" leftSection={editingRecipe ? <IconTools size={16} /> : <IconPlus size={16} />}>
+                            {editingRecipe ? 'Edit Recipe' : 'Create'}
                         </Tabs.Tab>
                         <Tabs.Tab value="schedule" leftSection={<IconCalendar size={16} />}>
                             Schedule
@@ -331,10 +431,24 @@ export function RecipesView() {
                     <Tabs.Panel value="create" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                         <ScrollArea h="100%" type="scroll">
                             <Box pb="xl">
-                                <CreateRecipeForm onSaved={() => {
-                                    loadRecipes();
-                                    setActiveTab('library');
-                                }} />
+                                <RecipeForm
+                                    key={`form-${formSession}`}
+                                    initialData={editingRecipe}
+                                    onSaved={() => {
+                                        loadRecipes();
+                                        setEditingRecipe(null);
+                                        setActiveTab('library');
+                                    }}
+                                    onDelete={(id) => {
+                                        handleDelete(id);
+                                        setEditingRecipe(null);
+                                        setActiveTab('library');
+                                    }}
+                                    onCancel={() => {
+                                        setEditingRecipe(null);
+                                        setActiveTab('library');
+                                    }}
+                                />
                             </Box>
                         </ScrollArea>
                     </Tabs.Panel>
@@ -353,6 +467,7 @@ export function RecipesView() {
                 opened={modalOpen}
                 onClose={() => setModalOpen(false)}
                 recipe={selectedRecipe}
+                onEdit={handleEditRecipe}
             />
         </Container>
     );

@@ -141,6 +141,68 @@ export const saveRecipe = async (recipe: RecipeInput): Promise<string | null> =>
     return recipeData.id;
 };
 
+export const updateRecipe = async (id: string, recipe: RecipeInput): Promise<boolean> => {
+    const supabase = await createClient();
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+        throw new Error('User not authenticated');
+    }
+
+    // 1. Update Recipe Details
+    const { error: recipeError } = await supabase
+        .from('recipes')
+        .update({
+            title: recipe.title,
+            cook_method: recipe.cook_method,
+            instructions: recipe.instructions,
+            calories: recipe.macros.calories,
+            protein_g: recipe.macros.protein,
+            carbs_g: recipe.macros.carbs,
+            fat_g: recipe.macros.fats,
+        })
+        .eq('id', id)
+        .eq('user_id', userData.user.id);
+
+    if (recipeError) {
+        console.error('Error updating recipe:', recipeError);
+        throw new Error('Failed to update recipe');
+    }
+
+    // 2. Reconcile Ingredients (Delete all and re-insert)
+    // First, delete existing ingredients for this recipe
+    const { error: deleteError } = await supabase
+        .from('recipe_ingredients')
+        .delete()
+        .eq('recipe_id', id);
+
+    if (deleteError) {
+        console.error('Error deleting old ingredients:', deleteError);
+        throw new Error('Failed to update recipe ingredients');
+    }
+
+    // Then, insert new ingredients
+    if (recipe.ingredients.length > 0) {
+        const ingredientsToInsert = recipe.ingredients.map(ing => ({
+            recipe_id: id,
+            ingredient_id: ing.ingredientId,
+            quantity: ing.quantity,
+            uom: ing.uom
+        }));
+
+        const { error: insertError } = await supabase
+            .from('recipe_ingredients')
+            .insert(ingredientsToInsert);
+
+        if (insertError) {
+            console.error('Error inserting new ingredients:', insertError);
+            throw new Error('Failed to update recipe ingredients');
+        }
+    }
+
+    return true;
+};
+
 export interface ProcessedRecipe extends RecipeRow {
     ingredients: {
         id: string;

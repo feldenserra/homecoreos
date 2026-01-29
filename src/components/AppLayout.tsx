@@ -2,23 +2,17 @@
 
 import { AppShell, Burger, Group, NavLink, Text, ThemeIcon, ScrollArea, Divider, Button } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconHome, IconListCheck, IconChefHat, IconSettings, IconNotebook, IconTrophy, IconCalendarWeek, IconCurrencyDollar } from '@tabler/icons-react';
+import { IconHome, IconSettings } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
+import { NAV_LINKS } from '@/config/navLinks';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
     const [opened, { toggle }] = useDisclosure();
     const pathname = usePathname();
 
-    const links = [
-        { icon: IconHome, label: 'Dashboard', href: '/app' },
-        { icon: IconListCheck, label: 'Tasks', href: '/app/tasks' },
-        { icon: IconCalendarWeek, label: 'Weekly Planner', href: '/app/planner' },
-        { icon: IconChefHat, label: 'Recipes', href: '/app/recipes' },
-        { icon: IconNotebook, label: 'Notes', href: '/app/notes' },
-        { icon: IconTrophy, label: 'Achievements', href: '/app/achievements' },
-        { icon: IconCurrencyDollar, label: 'Finance', href: '/app/finance' },
-    ];
+    const links = NAV_LINKS.filter(link => link.label !== 'Settings');
 
     const items = links.map((link) => (
         <NavLink
@@ -40,7 +34,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppShell
             header={{ height: 60 }}
             navbar={{
-                width: 200,
+                width: { base: 300, md: 200 },
                 breakpoint: 'md',
                 collapsed: { mobile: !opened },
             }}
@@ -48,7 +42,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         >
             <AppShell.Header>
                 <Group h="100%" px="xs">
-                    <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
+                    <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                     <Link href="/app" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <Group gap="xs">
                             <ThemeIcon variant="filled" size="md">

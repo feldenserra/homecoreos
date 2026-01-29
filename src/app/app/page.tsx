@@ -1,5 +1,5 @@
 import { Container, Title, SimpleGrid } from '@mantine/core';
-import { IconListCheck, IconChefHat, IconNotebook, IconTrophy } from '@tabler/icons-react';
+import { NAV_LINKS } from '@/config/navLinks';
 import { createClient } from '@/lib/supabase/server';
 import { DashboardCard } from './DashboardCard';
 
@@ -14,34 +14,18 @@ export default async function DashboardPage() {
             </Title>
 
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                <DashboardCard
-                    title="My Tasks"
-                    description="View and manage your todo list."
-                    icon={<IconListCheck size={24} />}
-                    href="/app/tasks"
-                    color="blue"
-                />
-                <DashboardCard
-                    title="Recipes"
-                    description="Plan your meals and nutrition."
-                    icon={<IconChefHat size={24} />}
-                    href="/app/recipes"
-                    color="green"
-                />
-                <DashboardCard
-                    title="Daily Notes"
-                    description="Capture thoughts and history."
-                    icon={<IconNotebook size={24} />}
-                    href="/app/notes"
-                    color="orange"
-                />
-                <DashboardCard
-                    title="Achievements"
-                    description="Visualize your progress."
-                    icon={<IconTrophy size={24} />}
-                    href="/app/achievements"
-                    color="yellow"
-                />
+                {NAV_LINKS
+                    .filter(link => link.label !== 'Dashboard' && link.label !== 'Settings')
+                    .map((link) => (
+                        <DashboardCard
+                            key={link.label}
+                            title={link.label}
+                            description={link.description || ''}
+                            icon={<link.icon size={24} />}
+                            href={link.href}
+                            color={link.color || 'blue'}
+                        />
+                    ))}
             </SimpleGrid>
         </Container>
     );

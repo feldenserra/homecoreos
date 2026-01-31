@@ -2,6 +2,7 @@
 import { MarketingHeader } from '@/components/MarketingHeader';
 import { MarketingFooter } from '@/components/MarketingFooter';
 import { FloatingThemeToggle } from '@/components/FloatingThemeToggle';
+import { BackToTop } from '@/components/BackToTop';
 import { Analytics } from "@vercel/analytics/next"
 
 export default function Layout({
@@ -18,6 +19,7 @@ export default function Layout({
             </main>
             <MarketingFooter />
             <FloatingThemeToggle />
+            <BackToTop />
         </div>
     );
 }

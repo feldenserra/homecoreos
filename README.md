@@ -36,7 +36,7 @@ This project is **"Semi Open Source" (Fair Code)**. You are free to download and
 #### Installation
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/homecoreos.git
+    git clone https://github.com/feldenserra/homecoreos.git
     cd homecoreos
     ```
 

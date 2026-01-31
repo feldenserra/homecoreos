@@ -1,5 +1,6 @@
 
 import { MarketingHeader } from '@/components/MarketingHeader';
+import { MarketingFooter } from '@/components/MarketingFooter';
 import { FloatingThemeToggle } from '@/components/FloatingThemeToggle';
 import { Analytics } from "@vercel/analytics/next"
 
@@ -9,16 +10,14 @@ export default function Layout({
     children: React.ReactNode;
 }) {
     return (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Analytics />
             <MarketingHeader />
-            <main>
+            <main style={{ flex: 1 }}>
                 {children}
             </main>
-            <footer style={{ padding: '2rem', textAlign: 'center', color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
-                &copy; {new Date().getFullYear()} Feldenserra. All rights reserved.
-            </footer>
+            <MarketingFooter />
             <FloatingThemeToggle />
-        </>
+        </div>
     );
 }

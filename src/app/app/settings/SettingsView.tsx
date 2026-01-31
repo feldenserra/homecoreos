@@ -32,6 +32,8 @@ export function SettingsView({ user }: SettingsViewProps) {
         },
     });
 
+
+
     const handleReportBug = async (values: typeof bugForm.values) => {
         try {
             await createBugReport({
@@ -49,6 +51,8 @@ export function SettingsView({ user }: SettingsViewProps) {
             alert('Failed to report bug. Please try again.');
         }
     };
+
+
 
     return (
         <Container size="sm" py="xl">
@@ -120,6 +124,8 @@ export function SettingsView({ user }: SettingsViewProps) {
                 </form>
             </Modal>
 
+
+
             <Paper withBorder p="xl" radius="md">
                 <Group mb="xl">
                     <Avatar size="xl" color="blue" radius="xl">
@@ -157,6 +163,7 @@ export function SettingsView({ user }: SettingsViewProps) {
                 <Divider my="md" />
 
                 <Title order={5} mb="xs">Account Actions</Title>
+
                 <Button
                     variant="light"
                     color="gray"

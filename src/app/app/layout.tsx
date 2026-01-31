@@ -1,4 +1,4 @@
-
+import { Analytics } from "@vercel/analytics/next"
 import { AppLayout } from '@/components/AppLayout';
 
 export default function Layout({
@@ -7,8 +7,11 @@ export default function Layout({
     children: React.ReactNode;
 }) {
     return (
-        <AppLayout>
-            {children}
-        </AppLayout>
+        <>
+            <Analytics />
+            <AppLayout>
+                {children}
+            </AppLayout>
+        </>
     );
 }

@@ -20,6 +20,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.1",
     "@tabler/icons-react": "^3.36.1",
+    "@vercel/analytics": "^1.6.1",
     "dayjs": "^1.11.19",
     "dotenv": "^17.2.3",
     "next": "16.1.5",

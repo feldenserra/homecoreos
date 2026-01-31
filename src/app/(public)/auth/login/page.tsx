@@ -14,26 +14,25 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-import { Container, Title, Text, Anchor } from '@mantine/core';
-import Link from 'next/link';
+import { Container, Title, Text } from '@mantine/core';
 import { LoginForm } from './LoginForm';
-import { ClientLinkAnchor } from '@/components/ClientLinkAnchor';
+import { PasswordLoginForm } from './PasswordLoginForm';
+
+const isRunningLocal = process.env.IS_RUNNING_LOCAL === 'true';
 
 export default function LoginPage() {
     return (
         <Container size={420} my={40}>
             <Title ta="center" className="mantine-font-family">
-                Welcome back!
+                Login or Create Account
             </Title>
             <Text c="dimmed" size="sm" ta="center" mt={5}>
-                Do not have an account yet?{' '}
-                Do not have an account yet?{' '}
-                <ClientLinkAnchor href="/auth/register" size="sm">
-                    Create account
-                </ClientLinkAnchor>
+                {isRunningLocal
+                    ? 'Enter your email and password to login or create an account.'
+                    : 'Enter your email to receive a magic link. If you don\'t have an account, one will be created for you.'}
             </Text>
 
-            <LoginForm />
+            {isRunningLocal ? <PasswordLoginForm /> : <LoginForm />}
         </Container>
     );
 }

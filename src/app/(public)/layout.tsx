@@ -1,6 +1,7 @@
 
 import { MarketingHeader } from '@/components/MarketingHeader';
 import { FloatingThemeToggle } from '@/components/FloatingThemeToggle';
+import { Analytics } from "@vercel/analytics/next"
 
 export default function Layout({
     children,
@@ -9,6 +10,7 @@ export default function Layout({
 }) {
     return (
         <>
+            <Analytics />
             <MarketingHeader />
             <main>
                 {children}

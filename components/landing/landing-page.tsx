@@ -20,7 +20,7 @@ const FEATURES = [
   {
     title: "Chat",
     meta: "Ask the house.",
-    body: "One thread for the household — dinner, the leaking tap, who is doing what — instead of another group chat.",
+    body: "One thread for the household instead of another group chat. Ask about dinner or the leaking tap without losing the thread.",
     Icon: IconMessage,
   },
   {
@@ -40,12 +40,12 @@ const STEPS = [
   {
     n: "02",
     title: "Invite the household",
-    body: "Hand over a 12-character invite code. Family, roommates, whoever shares the chores.",
+    body: "Hand over a 12-character invite code to anyone who shares the chores.",
   },
   {
     n: "03",
     title: "Keep the work in sight",
-    body: "Tasks on a board. A thread that belongs to the house. Everyone can see what is open.",
+    body: "A board for tasks and a thread that belongs to the house.",
   },
 ] as const;
 
@@ -93,8 +93,9 @@ export function LandingPage({ showLogin }: { showLogin: boolean }) {
             Everything for the house, in one place.
           </Text>
           <Text className="landing-lead" c="dimmed" size="md">
-            Shared chores, a household thread, and a space that belongs to the
-            house — not scattered across notes, texts, and whoever remembered.
+            Chores and a household thread, kept in a space that belongs to the
+            house. Not scattered across notes and a chat only one person
+            remembers.
           </Text>
           <div className="landing-hero-cta">
             <Button
@@ -124,8 +125,10 @@ export function LandingPage({ showLogin }: { showLogin: boolean }) {
           </Title>
           <ul className="landing-problem-list">
             <li>The list lives in someone’s head.</li>
-            <li>Chores stall in group chats.</li>
-            <li>Nobody can see what is actually open.</li>
+            <li>
+              Chores stall in group chats, and nobody can see what is actually
+              open.
+            </li>
           </ul>
           <Text className="landing-lead" c="dimmed">
             HomeCore is the shared surface for that work.
@@ -174,7 +177,7 @@ export function LandingPage({ showLogin }: { showLogin: boolean }) {
             fw={550}
             mb="lg"
           >
-            A home, then the household, then the work.
+            Start with a home. Then invite the people who live there.
           </Title>
           <ol className="landing-steps">
             {STEPS.map((step) => (
@@ -202,11 +205,11 @@ export function LandingPage({ showLogin }: { showLogin: boolean }) {
             fz={28}
             fw={550}
           >
-            Self-host it. Inspect it. Make it yours.
+            Self-host it and make it yours.
           </Title>
           <Text className="landing-lead" c="dimmed">
-            This site is the product homepage. The app runs where you host it —
-            your machine, your house, your rules.
+            This site is the product homepage. The app runs where you host it,
+            on your machine.
           </Text>
           <Button
             component="a"

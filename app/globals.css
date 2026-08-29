@@ -1,0 +1,156 @@
+:root {
+  --hc-bg-0: #f7f6f3;
+  --hc-bg-1: #eef2f0;
+  --hc-ink: #1c1917;
+  --hc-muted: #78716c;
+  --hc-line: rgba(28, 25, 23, 0.08);
+  --hc-surface: rgba(255, 255, 255, 0.72);
+  --hc-surface-solid: #ffffff;
+  --hc-col-not-started: #94a3b8;
+  --hc-col-in-progress: #3b82f6;
+  --hc-col-stuck: #f59e0b;
+  --hc-col-complete: #14b8a6;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+html,
+body {
+  min-height: 100%;
+  color: var(--hc-ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #e8f0ec 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #e7eef8 0%, transparent 50%),
+    linear-gradient(180deg, var(--hc-bg-0), var(--hc-bg-1));
+  background-attachment: fixed;
+}
+
+.app-shell {
+  min-height: 100dvh;
+}
+
+.brand-mark {
+  letter-spacing: 0.14em;
+}
+
+.home-gate-link {
+  display: block;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--hc-line);
+  background: var(--hc-surface);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.home-gate-link:active {
+  transform: scale(0.99);
+}
+
+.home-gate-link:hover {
+  border-color: rgba(28, 25, 23, 0.16);
+  background: var(--hc-surface-solid);
+}
+
+.kanban-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 12px 16px 10px;
+  background: color-mix(in srgb, var(--hc-bg-0) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--hc-line);
+}
+
+.kanban-board {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px 28px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+.kanban-column {
+  flex: 0 0 min(86vw, 320px);
+  scroll-snap-align: start;
+  padding: 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, white 55%, transparent);
+  border: 1px solid var(--hc-line);
+  border-top: 3px solid var(--col-accent, var(--hc-col-not-started));
+  min-height: 60vh;
+  transition: background 160ms ease;
+}
+
+.kanban-column--over {
+  background: color-mix(in srgb, white 78%, transparent);
+}
+
+.task-card {
+  padding: 14px 14px;
+  border-radius: 12px;
+  background: var(--hc-surface-solid);
+  border: 1px solid var(--hc-line);
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.03);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  min-height: 44px;
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card--overlay {
+  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.12);
+  opacity: 1;
+}
+
+.add-task-panel {
+  position: sticky;
+  bottom: 0;
+  z-index: 25;
+  margin-top: auto;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hc-line);
+  background: color-mix(in srgb, var(--hc-bg-0) 90%, white);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.add-task-drawer {
+  border-radius: 16px 16px 0 0;
+}
+
+@media (min-width: 48em) {
+  .kanban-board {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+    scroll-snap-type: none;
+    gap: 14px;
+    padding: 16px 20px 32px;
+  }
+
+  .kanban-column {
+    flex: unset;
+    min-height: calc(100dvh - 120px);
+  }
+
+  .kanban-header {
+    padding: 16px 20px 12px;
+  }
+}

@@ -49,6 +49,13 @@ export const theme = createTheme({
         },
       },
     },
+    Input: {
+      styles: {
+        input: {
+          fontSize: rem(16),
+        },
+      },
+    },
     TextInput: {
       styles: {
         input: {

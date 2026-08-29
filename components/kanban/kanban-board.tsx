@@ -1,25 +1,5 @@
 "use client";
 
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  TouchSensor,
-  closestCorners,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragOverEvent,
-  type DragStartEvent,
-  useDroppable,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Box, Button, Group, Stack, Text, TextInput } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -36,10 +16,7 @@ export type KanbanTask = {
   position: number;
 };
 
-const COLUMN_META: Record<
-  TaskStatus,
-  { label: string; accent: string }
-> = {
+const COLUMN_META: Record<TaskStatus, { label: string; accent: string }> = {
   not_started: {
     label: "Not started",
     accent: "var(--hc-col-not-started)",
@@ -57,6 +34,17 @@ const COLUMN_META: Record<
     accent: "var(--hc-col-complete)",
   },
 };
+
+/** Row-major 2x2: TL, TR, BL, BR — clockwise from top-left is NS, IP, stuck, complete. */
+const PICKER_CELLS: TaskStatus[] = [
+  "not_started",
+  "in_progress",
+  "complete",
+  "stuck",
+];
+
+const PICKER_SIZE = 172;
+const PICKER_PAD = 12;
 
 function sortTasks(list: KanbanTask[]) {
   return [...list].sort((a, b) => a.position - b.position);
@@ -78,63 +66,66 @@ function groupByStatus(tasks: KanbanTask[]) {
   return map;
 }
 
+function clampPickerPos(rect: DOMRect) {
+  const left = Math.max(
+    PICKER_PAD,
+    Math.min(
+      rect.left + rect.width / 2 - PICKER_SIZE / 2,
+      window.innerWidth - PICKER_SIZE - PICKER_PAD,
+    ),
+  );
+  const top = Math.max(
+    PICKER_PAD,
+    Math.min(
+      rect.top + rect.height / 2 - PICKER_SIZE / 2,
+      window.innerHeight - PICKER_SIZE - PICKER_PAD,
+    ),
+  );
+  return { left, top };
+}
+
 function TaskCard({
   task,
-  dragging,
+  selected,
+  onOpen,
 }: {
   task: KanbanTask;
-  dragging?: boolean;
+  selected?: boolean;
+  onOpen: (task: KanbanTask, anchor: DOMRect) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    data: { type: "task", task },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.35 : 1,
-  };
-
   return (
-    <Box
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`task-card${dragging ? " task-card--overlay" : ""}`}
+    <button
+      type="button"
+      className={`task-card${selected ? " task-card--selected" : ""}`}
+      aria-haspopup="dialog"
+      aria-expanded={selected}
+      onClick={(event) => {
+        onOpen(task, event.currentTarget.getBoundingClientRect());
+      }}
     >
-      <Text fw={550} size="sm" lh={1.35}>
+      <Text component="span" fw={550} size="sm" lh={1.35}>
         {task.title}
       </Text>
-    </Box>
+    </button>
   );
 }
 
 function Column({
   status,
   tasks,
+  movingTaskId,
+  onOpenPicker,
 }: {
   status: TaskStatus;
   tasks: KanbanTask[];
+  movingTaskId: string | null;
+  onOpenPicker: (task: KanbanTask, anchor: DOMRect) => void;
 }) {
   const meta = COLUMN_META[status];
-  const { setNodeRef, isOver } = useDroppable({
-    id: status,
-    data: { type: "column", status },
-  });
 
   return (
     <Box
-      ref={setNodeRef}
-      className={`kanban-column${isOver ? " kanban-column--over" : ""}`}
+      className="kanban-column"
       style={{ ["--col-accent" as string]: meta.accent }}
     >
       <Group justify="space-between" mb="sm" wrap="nowrap">
@@ -145,16 +136,16 @@ function Column({
           {tasks.length}
         </span>
       </Group>
-      <SortableContext
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <Stack gap={8} mih={48}>
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </Stack>
-      </SortableContext>
+      <Stack gap={8} mih={48}>
+        {tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            selected={movingTaskId === task.id}
+            onOpen={onOpenPicker}
+          />
+        ))}
+      </Stack>
     </Box>
   );
 }
@@ -168,31 +159,46 @@ export function KanbanBoard({
 }) {
   const router = useRouter();
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
   const [tasks, setTasks] = useState(initialTasks);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [dndReady, setDndReady] = useState(false);
   const [activeCol, setActiveCol] = useState(0);
-
-  useEffect(() => {
-    setDndReady(true);
-  }, []);
+  const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     setTasks(initialTasks);
   }, [initialTasks]);
 
   const columns = useMemo(() => groupByStatus(tasks), [tasks]);
-  const activeTask = tasks.find((t) => t.id === activeId) ?? null;
+  const movingTask = tasks.find((t) => t.id === movingTaskId) ?? null;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 180, tolerance: 8 },
-    }),
-  );
+  useEffect(() => {
+    if (!movingTaskId) {
+      return;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMovingTaskId(null);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [movingTaskId]);
+
+  useEffect(() => {
+    if (!movingTaskId) {
+      return;
+    }
+    const current = pickerRef.current?.querySelector<HTMLButtonElement>(
+      ".task-move-cell--current",
+    );
+    current?.focus();
+  }, [movingTaskId]);
 
   function onBoardScroll() {
     const el = boardRef.current;
@@ -218,157 +224,70 @@ export function KanbanBoard({
       return;
     }
     const col = el.children[index] as HTMLElement | undefined;
-    col?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    col?.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
   }
 
-  function findContainer(id: string): TaskStatus | null {
-    if (TASK_STATUSES.includes(id as TaskStatus)) {
-      return id as TaskStatus;
+  function closePicker() {
+    setMovingTaskId(null);
+  }
+
+  function onOpenPicker(task: KanbanTask, anchor: DOMRect) {
+    if (movingTaskId === task.id) {
+      closePicker();
+      return;
     }
-    const task = tasks.find((t) => t.id === id);
-    return task?.status ?? null;
+    setPickerPos(clampPickerPos(anchor));
+    setMovingTaskId(task.id);
   }
 
-  function onDragStart(event: DragStartEvent) {
-    setActiveId(String(event.active.id));
-  }
-
-  function onDragOver(event: DragOverEvent) {
-    const { active, over } = event;
-    if (!over) {
+  function persistMove(task: KanbanTask, nextStatus: TaskStatus) {
+    if (task.status === nextStatus) {
+      closePicker();
       return;
     }
 
-    const activeContainer = findContainer(String(active.id));
-    const overId = String(over.id);
-    const overContainer =
-      findContainer(overId) ??
-      (TASK_STATUSES.includes(overId as TaskStatus)
-        ? (overId as TaskStatus)
-        : null);
-
-    if (!activeContainer || !overContainer || activeContainer === overContainer) {
-      return;
-    }
+    const position = tasks.filter((t) => t.status === nextStatus).length;
+    const sourceStatus = task.status;
 
     setTasks((prev) => {
-      const activeTask = prev.find((t) => t.id === active.id);
-      if (!activeTask) {
-        return prev;
-      }
-
-      const without = prev.filter((t) => t.id !== active.id);
-      const overTasks = sortTasks(
-        without.filter((t) => t.status === overContainer),
+      const without = prev.filter((t) => t.id !== task.id);
+      const dest = sortTasks(
+        without.filter((t) => t.status === nextStatus),
       );
-      const overIndex = overTasks.findIndex((t) => t.id === overId);
-      const insertAt = overIndex >= 0 ? overIndex : overTasks.length;
-
       const moved: KanbanTask = {
-        ...activeTask,
-        status: overContainer,
-        position: insertAt,
+        ...task,
+        status: nextStatus,
+        position,
       };
-
-      const nextOver = [...overTasks];
-      nextOver.splice(insertAt, 0, moved);
-
-      const reindexed = nextOver.map((t, i) => ({ ...t, position: i }));
-      const other = without.filter((t) => t.status !== overContainer);
-
-      return [...other, ...reindexed];
-    });
-  }
-
-  function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    setActiveId(null);
-    if (!over) {
-      return;
-    }
-
-    const activeIdStr = String(active.id);
-    const overId = String(over.id);
-
-    setTasks((prev) => {
-      const current = prev.find((t) => t.id === activeIdStr);
-      if (!current) {
-        return prev;
-      }
-
-      const container = current.status;
-      const columnTasks = sortTasks(prev.filter((t) => t.status === container));
-      const oldIndex = columnTasks.findIndex((t) => t.id === activeIdStr);
-      let newIndex = columnTasks.findIndex((t) => t.id === overId);
-      if (newIndex < 0) {
-        newIndex = columnTasks.length - 1;
-      }
-      if (oldIndex < 0 || newIndex < 0) {
-        return prev;
-      }
-
-      const reordered = arrayMove(columnTasks, oldIndex, newIndex).map(
-        (t, i) => ({ ...t, position: i }),
+      const reindexedDest = [...dest, moved].map((t, i) => ({
+        ...t,
+        position: i,
+      }));
+      const source = sortTasks(
+        without.filter((t) => t.status === sourceStatus),
+      ).map((t, i) => ({ ...t, position: i }));
+      const other = without.filter(
+        (t) => t.status !== nextStatus && t.status !== sourceStatus,
       );
-      const other = prev.filter((t) => t.status !== container);
-      const next = [...other, ...reordered];
-
-      const moved = reordered.find((t) => t.id === activeIdStr);
-      if (moved) {
-        startTransition(async () => {
-          await moveTask({
-            homeId,
-            taskId: moved.id,
-            status: moved.status,
-            position: moved.position,
-          });
-          router.refresh();
-        });
-      }
-
-      return next;
+      return [...other, ...source, ...reindexedDest];
     });
-  }
 
-  const board = (
-    <div
-      ref={boardRef}
-      className="kanban-board"
-      onScroll={onBoardScroll}
-    >
-      {TASK_STATUSES.map((status) =>
-        dndReady ? (
-          <Column key={status} status={status} tasks={columns[status]} />
-        ) : (
-          <Box
-            key={status}
-            className="kanban-column"
-            style={{
-              ["--col-accent" as string]: COLUMN_META[status].accent,
-            }}
-          >
-            <Group justify="space-between" mb="sm" wrap="nowrap">
-              <Text fw={600} size="sm">
-                {COLUMN_META[status].label}
-              </Text>
-              <span className={`status-badge status-badge--${status}`}>
-                {columns[status].length}
-              </span>
-            </Group>
-            <Stack gap={8} mih={48}>
-              {columns[status].map((task) => (
-                <Box key={task.id} className="task-card">
-                  <Text fw={550} size="sm" lh={1.35}>
-                    {task.title}
-                  </Text>
-                </Box>
-              ))}
-            </Stack>
-          </Box>
-        ),
-      )}
-    </div>
-  );
+    closePicker();
+    startTransition(async () => {
+      await moveTask({
+        homeId,
+        taskId: task.id,
+        status: nextStatus,
+        position,
+      });
+      router.refresh();
+    });
+    scrollToColumn(TASK_STATUSES.indexOf(nextStatus));
+  }
 
   return (
     <Box className="kanban-page">
@@ -389,22 +308,53 @@ export function KanbanBoard({
         ))}
       </div>
 
-      {dndReady ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragEnd={onDragEnd}
-        >
-          {board}
-          <DragOverlay>
-            {activeTask ? <TaskCard task={activeTask} dragging /> : null}
-          </DragOverlay>
-        </DndContext>
-      ) : (
-        board
-      )}
+      <div ref={boardRef} className="kanban-board" onScroll={onBoardScroll}>
+        {TASK_STATUSES.map((status) => (
+          <Column
+            key={status}
+            status={status}
+            tasks={columns[status]}
+            movingTaskId={movingTaskId}
+            onOpenPicker={onOpenPicker}
+          />
+        ))}
+      </div>
+
+      {movingTask ? (
+        <>
+          <button
+            type="button"
+            className="task-move-catcher"
+            aria-label="Dismiss move picker"
+            onClick={closePicker}
+          />
+          <div
+            ref={pickerRef}
+            className="task-move-popover"
+            role="dialog"
+            aria-label={`Move “${movingTask.title}”`}
+            style={{ top: pickerPos.top, left: pickerPos.left }}
+          >
+            <div className="task-move-grid">
+              {PICKER_CELLS.map((status) => {
+                const current = status === movingTask.status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    className={`task-move-cell task-move-cell--${status}${current ? " task-move-cell--current" : ""}`}
+                    aria-pressed={current}
+                    aria-label={COLUMN_META[status].label}
+                    onClick={() => persistMove(movingTask, status)}
+                  >
+                    {COLUMN_META[status].label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {addOpen ? (
         <Box className="add-task-sheet" component="section">

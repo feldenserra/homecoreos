@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { auth } from "../../../auth";
 import { getAiProvider, type AiChatMessage } from "../../../lib/ai";
 import { decryptChatText, encryptChatText } from "../../../lib/chat-crypto";
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  MAX_SYSTEM_PROMPT_LENGTH,
+  normalizeSystemPrompt,
+} from "../../../lib/chat-prompt";
 import { isValidHomeId, normalizeHomeId } from "../../../lib/home-id";
 import { withRls } from "../../../src/db/rls";
 import {
@@ -17,6 +22,7 @@ type ChatBody = {
   homeId?: string;
   conversationId?: string;
   message?: string;
+  systemPrompt?: string;
 };
 
 function titleFromMessage(message: string) {
@@ -48,6 +54,8 @@ export async function POST(req: Request) {
   const homeId = normalizeHomeId(String(body.homeId ?? ""));
   const message = String(body.message ?? "").trim();
   let conversationId = String(body.conversationId ?? "").trim();
+  const incomingPromptRaw = String(body.systemPrompt ?? "").trim();
+  const incomingPrompt = normalizeSystemPrompt(incomingPromptRaw);
 
   if (!isValidHomeId(homeId)) {
     return NextResponse.json({ error: "Invalid home." }, { status: 400 });
@@ -57,6 +65,12 @@ export async function POST(req: Request) {
   }
   if (message.length > 8000) {
     return NextResponse.json({ error: "Message is too long." }, { status: 400 });
+  }
+  if (incomingPromptRaw.length > MAX_SYSTEM_PROMPT_LENGTH) {
+    return NextResponse.json(
+      { error: "Instructions are too long." },
+      { status: 400 },
+    );
   }
 
   try {
@@ -75,6 +89,8 @@ export async function POST(req: Request) {
 
       const titlePlain = titleFromMessage(message);
       const titleCipher = encryptChatText(titlePlain);
+      const promptCipher = encryptChatText(incomingPrompt);
+      let systemPromptPlain = incomingPrompt;
 
       if (!conversationId) {
         const [created] = await tx
@@ -82,13 +98,18 @@ export async function POST(req: Request) {
           .values({
             homeId,
             title: titleCipher,
+            systemPrompt: promptCipher,
             createdByUserId: userId,
           })
           .returning({ id: chatConversations.id });
         conversationId = created.id;
       } else {
         const [existing] = await tx
-          .select({ id: chatConversations.id, title: chatConversations.title })
+          .select({
+            id: chatConversations.id,
+            title: chatConversations.title,
+            systemPrompt: chatConversations.systemPrompt,
+          })
           .from(chatConversations)
           .where(
             and(
@@ -102,20 +123,27 @@ export async function POST(req: Request) {
           throw new Error("NOT_FOUND");
         }
 
+        const updates: {
+          title?: string;
+          systemPrompt?: string;
+          updatedAt: Date;
+        } = { updatedAt: new Date() };
+
         if (decryptChatText(existing.title) === "New chat") {
-          await tx
-            .update(chatConversations)
-            .set({
-              title: titleCipher,
-              updatedAt: new Date(),
-            })
-            .where(eq(chatConversations.id, conversationId));
-        } else {
-          await tx
-            .update(chatConversations)
-            .set({ updatedAt: new Date() })
-            .where(eq(chatConversations.id, conversationId));
+          updates.title = titleCipher;
         }
+
+        if (existing.systemPrompt) {
+          systemPromptPlain =
+            decryptChatText(existing.systemPrompt) || DEFAULT_SYSTEM_PROMPT;
+        } else {
+          updates.systemPrompt = promptCipher;
+        }
+
+        await tx
+          .update(chatConversations)
+          .set(updates)
+          .where(eq(chatConversations.id, conversationId));
       }
 
       const [userMsg] = await tx
@@ -149,6 +177,7 @@ export async function POST(req: Request) {
       return {
         conversationId,
         userMessageId: userMsg.id,
+        systemPrompt: systemPromptPlain,
         history: history
           .filter((m) => m.role !== "system")
           .map((m) => ({
@@ -180,8 +209,7 @@ export async function POST(req: Request) {
             messages: [
               {
                 role: "system",
-                content:
-                  "You are a helpful household assistant for HomeCore. Be concise, practical, and friendly.",
+                content: prepared.systemPrompt,
               },
               ...prepared.history,
             ],

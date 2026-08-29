@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type {
   AdapterAccountType,
@@ -79,15 +80,19 @@ export const verificationTokens = pgTable(
   ],
 );
 
-export const homes = pgTable("home", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  createdByUserId: text("createdByUserId")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
-});
+export const homes = pgTable(
+  "home",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    createdByUserId: text("createdByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("home_one_per_creator").on(table.createdByUserId)],
+);
 
 export const homeMembers = pgTable(
   "home_member",
@@ -142,6 +147,7 @@ export const chatConversations = pgTable(
       .notNull()
       .references(() => homes.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
+    systemPrompt: text("systemPrompt"),
     createdByUserId: text("createdByUserId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

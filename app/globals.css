@@ -665,6 +665,23 @@ body {
   padding: 32px 16px;
 }
 
+.chat-empty-prompt {
+  width: 100%;
+  max-width: 520px;
+  text-align: left;
+}
+
+.chat-prompt-toggle {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.chat-prompt-recall {
+  padding: 10px var(--hc-gutter) 12px;
+  border-bottom: 1px solid var(--hc-line);
+  background: color-mix(in srgb, var(--hc-paper) 70%, var(--hc-surface));
+}
+
 .chat-row {
   display: flex;
 }

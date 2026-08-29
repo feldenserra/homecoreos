@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../../auth";
 import { ChatApp } from "../../../../../components/chat/chat-app";
+import { DEFAULT_SYSTEM_PROMPT } from "../../../../../lib/chat-prompt";
 import { isValidHomeId, normalizeHomeId } from "../../../../../lib/home-id";
 import { getHomeForMember } from "../../../actions";
 import { getConversationsForHome } from "../../../chat-actions";
@@ -39,6 +40,7 @@ export default async function ChatIndexPage({
         }))}
         activeConversationId={null}
         initialMessages={[]}
+        initialSystemPrompt={DEFAULT_SYSTEM_PROMPT}
       />
     </main>
   );

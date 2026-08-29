@@ -68,6 +68,7 @@ export async function getConversationForMember(
         id: chatConversations.id,
         homeId: chatConversations.homeId,
         title: chatConversations.title,
+        systemPrompt: chatConversations.systemPrompt,
         updatedAt: chatConversations.updatedAt,
       })
       .from(chatConversations)
@@ -84,6 +85,9 @@ export async function getConversationForMember(
     return {
       ...row,
       title: decryptChatText(row.title),
+      systemPrompt: row.systemPrompt
+        ? decryptChatText(row.systemPrompt)
+        : null,
     };
   });
 }

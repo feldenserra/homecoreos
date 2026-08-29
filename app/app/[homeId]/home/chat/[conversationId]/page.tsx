@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../../../auth";
 import { ChatApp } from "../../../../../../components/chat/chat-app";
+import { DEFAULT_SYSTEM_PROMPT } from "../../../../../../lib/chat-prompt";
 import { isValidHomeId, normalizeHomeId } from "../../../../../../lib/home-id";
 import { getHomeForMember } from "../../../../actions";
 import {
@@ -59,6 +60,9 @@ export default async function ChatConversationPage({
           role: m.role,
           content: m.content,
         }))}
+        initialSystemPrompt={
+          conversation.systemPrompt || DEFAULT_SYSTEM_PROMPT
+        }
       />
     </main>
   );

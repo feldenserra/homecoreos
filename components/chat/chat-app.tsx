@@ -3,6 +3,7 @@
 import {
   ActionIcon,
   Button,
+  Collapse,
   ScrollArea,
   Stack,
   Text,
@@ -17,6 +18,10 @@ import {
   createConversation,
   deleteConversation,
 } from "../../app/app/chat-actions";
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  MAX_SYSTEM_PROMPT_LENGTH,
+} from "../../lib/chat-prompt";
 
 export type ChatConversationListItem = {
   id: string;
@@ -35,15 +40,21 @@ export function ChatApp({
   conversations,
   activeConversationId,
   initialMessages,
+  initialSystemPrompt,
 }: {
   homeId: string;
   conversations: ChatConversationListItem[];
   activeConversationId: string | null;
   initialMessages: ChatUiMessage[];
+  initialSystemPrompt: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [messages, setMessages] = useState(initialMessages);
+  const [systemPrompt, setSystemPrompt] = useState(
+    initialSystemPrompt || DEFAULT_SYSTEM_PROMPT,
+  );
+  const [promptOpen, setPromptOpen] = useState(false);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +68,9 @@ export function ChatApp({
 
   useEffect(() => {
     setMessages(initialMessages);
-  }, [initialMessages, activeConversationId]);
+    setSystemPrompt(initialSystemPrompt || DEFAULT_SYSTEM_PROMPT);
+    setPromptOpen(false);
+  }, [initialMessages, activeConversationId, initialSystemPrompt]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -138,6 +151,7 @@ export function ChatApp({
           homeId,
           conversationId: activeConversationId ?? undefined,
           message: text,
+          systemPrompt,
         }),
       });
 
@@ -297,10 +311,33 @@ export function ChatApp({
           >
             <IconMessages size={20} stroke={1.7} />
           </ActionIcon>
-          <Text size="sm" fw={600} lineClamp={1}>
+          <Text size="sm" fw={600} lineClamp={1} style={{ flex: 1 }}>
             {activeConversationId ? activeTitle : "New chat"}
           </Text>
+          {messages.length > 0 ? (
+            <UnstyledButton
+              className="chat-prompt-toggle"
+              onClick={() => setPromptOpen((open) => !open)}
+            >
+              <Text size="sm" c="dimmed">
+                {promptOpen ? "Hide instructions" : "Instructions"}
+              </Text>
+            </UnstyledButton>
+          ) : null}
         </div>
+
+        {messages.length > 0 ? (
+          <Collapse expanded={promptOpen}>
+            <div className="chat-prompt-recall">
+              <Text size="xs" fw={600} c="dimmed" mb={4}>
+                Instructions for this chat
+              </Text>
+              <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                {systemPrompt}
+              </Text>
+            </div>
+          </Collapse>
+        ) : null}
 
         <div className="chat-messages">
           {messages.length === 0 ? (
@@ -311,6 +348,19 @@ export function ChatApp({
               <Text size="sm" c="dimmed" mt={8} maw={360}>
                 Ask what’s still open, what’s for dinner, or what to do next.
               </Text>
+              <Textarea
+                className="chat-empty-prompt"
+                label="Instructions"
+                description="Set how the assistant should behave. You can change this before sending."
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.currentTarget.value)}
+                minRows={3}
+                maxRows={8}
+                autosize
+                maxLength={MAX_SYSTEM_PROMPT_LENGTH}
+                disabled={streaming}
+                mt="lg"
+              />
             </div>
           ) : (
             <Stack gap="md" maw={720} mx="auto" w="100%" px="md" py="md">

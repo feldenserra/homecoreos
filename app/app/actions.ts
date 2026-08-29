@@ -6,6 +6,8 @@ import { auth } from "../../auth";
 import {
   generateHomeId,
   isValidHomeId,
+  MAX_CREATED_HOMES,
+  MAX_JOINED_HOMES,
   normalizeHomeId,
 } from "../../lib/home-id";
 import { withRls } from "../../src/db/rls";
@@ -27,6 +29,72 @@ async function requireUserId() {
 
 export type ActionResult = { error: string } | { ok: true };
 
+export type HomeQuota = {
+  createdCount: number;
+  joinedCount: number;
+};
+
+function scalarCount(row: { count?: unknown } | undefined): number {
+  const n = Number(row?.count ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function pgErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code: unknown }).code);
+  }
+  return undefined;
+}
+
+function pgConstraint(err: unknown): string {
+  if (!err || typeof err !== "object") {
+    return "";
+  }
+  const e = err as { constraint_name?: unknown; constraint?: unknown };
+  return String(e.constraint_name ?? e.constraint ?? "");
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return String(err ?? "");
+}
+
+function isAlreadyCreatedError(err: unknown): boolean {
+  const code = pgErrorCode(err);
+  const constraint = pgConstraint(err);
+  const message = errorMessage(err);
+  if (code === "42501" || message.includes("row-level security")) {
+    return true;
+  }
+  if (code === "23505" && constraint.includes("home_one_per_creator")) {
+    return true;
+  }
+  return message.includes("home_one_per_creator");
+}
+
+function isHomeIdCollision(err: unknown): boolean {
+  if (pgErrorCode(err) !== "23505") {
+    return false;
+  }
+  const constraint = pgConstraint(err);
+  return constraint.includes("home_pkey") || constraint === "home_id";
+}
+
+export async function getHomeQuota(userId: string): Promise<HomeQuota> {
+  return withRls(userId, async (tx) => {
+    const rows = await tx.execute(
+      sql`select user_created_home_count() as created, user_joined_home_count() as joined`,
+    );
+    const row = rows[0] as { created?: unknown; joined?: unknown } | undefined;
+    return {
+      createdCount: scalarCount({ count: row?.created }),
+      joinedCount: scalarCount({ count: row?.joined }),
+    };
+  });
+}
+
 export async function createHome(formData: FormData): Promise<ActionResult> {
   const userId = await requireUserId();
   const name = String(formData.get("name") ?? "").trim();
@@ -36,6 +104,11 @@ export async function createHome(formData: FormData): Promise<ActionResult> {
   }
   if (name.length > 64) {
     return { error: "Home name must be 64 characters or fewer." };
+  }
+
+  const quota = await getHomeQuota(userId);
+  if (quota.createdCount >= MAX_CREATED_HOMES) {
+    return { error: "You can only create one home." };
   }
 
   let homeId = "";
@@ -56,8 +129,14 @@ export async function createHome(formData: FormData): Promise<ActionResult> {
       });
       homeId = candidate;
       break;
-    } catch {
-      // Unique collision on id — retry with a new code.
+    } catch (err) {
+      if (isAlreadyCreatedError(err)) {
+        return { error: "You can only create one home." };
+      }
+      if (isHomeIdCollision(err) || pgErrorCode(err) === "23505") {
+        continue;
+      }
+      return { error: "Could not create a home. Try again." };
     }
   }
 
@@ -73,7 +152,7 @@ export async function joinHome(formData: FormData): Promise<ActionResult> {
   const homeId = normalizeHomeId(String(formData.get("code") ?? ""));
 
   if (!isValidHomeId(homeId)) {
-    return { error: "Enter a valid 8-character home code." };
+    return { error: "Enter a valid 8- or 12-character home code." };
   }
 
   const result = await withRls(userId, async (tx) => {
@@ -101,11 +180,33 @@ export async function joinHome(formData: FormData): Promise<ActionResult> {
       return { already: true } as const;
     }
 
-    await tx.insert(homeMembers).values({
-      homeId,
-      userId,
-      role: "member",
-    });
+    const joinedRows = await tx.execute(
+      sql`select user_joined_home_count() as count`,
+    );
+    const joinedCount = scalarCount(
+      joinedRows[0] as { count?: unknown } | undefined,
+    );
+    if (joinedCount >= MAX_JOINED_HOMES) {
+      return {
+        error: "You can join at most 5 other homes.",
+      } as const;
+    }
+
+    try {
+      await tx.insert(homeMembers).values({
+        homeId,
+        userId,
+        role: "member",
+      });
+    } catch (err) {
+      if (
+        pgErrorCode(err) === "42501" ||
+        errorMessage(err).includes("row-level security")
+      ) {
+        return { error: "You can join at most 5 other homes." } as const;
+      }
+      throw err;
+    }
 
     return { joined: true } as const;
   });

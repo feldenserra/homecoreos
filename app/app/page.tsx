@@ -1,7 +1,8 @@
 import { Button, Stack, Text, Title } from "@mantine/core";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "../../auth";
-import { getHomesForUser } from "./actions";
+import { MAX_CREATED_HOMES, MAX_JOINED_HOMES } from "../../lib/home-id";
+import { getHomeQuota, getHomesForUser } from "./actions";
 import { HomeGate } from "./home-gate";
 
 export default async function AppGatePage() {
@@ -10,7 +11,10 @@ export default async function AppGatePage() {
     redirect("/login");
   }
 
-  const homes = await getHomesForUser(session.user.id);
+  const [homes, quota] = await Promise.all([
+    getHomesForUser(session.user.id),
+    getHomeQuota(session.user.id),
+  ]);
 
   return (
     <main className="home-gate-page">
@@ -23,11 +27,15 @@ export default async function AppGatePage() {
             Which house?
           </Title>
           <Text size="sm" c="dimmed" maw={360}>
-            Create a shared space or join one with an invite code.
+            Create one home, or join others with a 12-character invite code.
           </Text>
         </Stack>
 
-        <HomeGate homes={homes} />
+        <HomeGate
+          homes={homes}
+          canCreate={quota.createdCount < MAX_CREATED_HOMES}
+          remainingJoins={Math.max(0, MAX_JOINED_HOMES - quota.joinedCount)}
+        />
 
         <form
           className="home-gate-signout"

@@ -13,7 +13,7 @@ import {
 import { IconMessages, IconSend, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createConversation,
   deleteConversation,
@@ -49,7 +49,7 @@ export function ChatApp({
   initialSystemPrompt: string;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [mutating, setMutating] = useState(false);
   const [messages, setMessages] = useState(initialMessages);
   const [systemPrompt, setSystemPrompt] = useState(
     initialSystemPrompt || DEFAULT_SYSTEM_PROMPT,
@@ -77,8 +77,12 @@ export function ChatApp({
   }, [messages, streaming]);
 
   async function onNewChat() {
+    if (mutating || streaming) {
+      return;
+    }
     setError(null);
-    startTransition(async () => {
+    setMutating(true);
+    try {
       const result = await createConversation(homeId);
       if ("error" in result) {
         setError(result.error);
@@ -86,8 +90,9 @@ export function ChatApp({
       }
       setSidebarOpen(false);
       router.push(`${base}/${result.id}`);
-      router.refresh();
-    });
+    } finally {
+      setMutating(false);
+    }
   }
 
   async function onDeleteChat(
@@ -97,7 +102,7 @@ export function ChatApp({
   ) {
     e.preventDefault();
     e.stopPropagation();
-    if (streaming || pending) {
+    if (streaming || mutating) {
       return;
     }
     if (
@@ -109,7 +114,8 @@ export function ChatApp({
     }
 
     setError(null);
-    startTransition(async () => {
+    setMutating(true);
+    try {
       const result = await deleteConversation(homeId, conversationId);
       if ("error" in result) {
         setError(result.error);
@@ -117,10 +123,13 @@ export function ChatApp({
       }
       if (activeConversationId === conversationId) {
         setMessages([]);
-        router.push(base);
+        router.replace(base);
+      } else {
+        router.refresh();
       }
-      router.refresh();
-    });
+    } finally {
+      setMutating(false);
+    }
   }
 
   async function onSend(e: React.FormEvent) {
@@ -242,7 +251,7 @@ export function ChatApp({
           <Button
             fullWidth
             onClick={onNewChat}
-            loading={pending}
+            loading={mutating}
             disabled={streaming}
           >
             New chat
@@ -278,7 +287,7 @@ export function ChatApp({
                       color="gray"
                       size="sm"
                       aria-label={`Delete ${c.title}`}
-                      disabled={pending || streaming}
+                      disabled={mutating || streaming}
                       onClick={(e) => void onDeleteChat(e, c.id, c.title)}
                     >
                       <IconTrash size={14} stroke={1.7} />

@@ -759,6 +759,11 @@ body {
     border: 0;
     background: rgba(44, 36, 28, 0.28);
   }
+
+  .chat-composer textarea,
+  .chat-empty-prompt textarea {
+    font-size: 16px;
+  }
 }
 
 /* Landing */

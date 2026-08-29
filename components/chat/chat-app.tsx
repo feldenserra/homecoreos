@@ -9,11 +9,14 @@ import {
   Textarea,
   UnstyledButton,
 } from "@mantine/core";
-import { IconMessages, IconSend } from "@tabler/icons-react";
+import { IconMessages, IconSend, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { createConversation } from "../../app/app/chat-actions";
+import {
+  createConversation,
+  deleteConversation,
+} from "../../app/app/chat-actions";
 
 export type ChatConversationListItem = {
   id: string;
@@ -70,6 +73,39 @@ export function ChatApp({
       }
       setSidebarOpen(false);
       router.push(`${base}/${result.id}`);
+      router.refresh();
+    });
+  }
+
+  async function onDeleteChat(
+    e: React.MouseEvent,
+    conversationId: string,
+    title: string,
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (streaming || pending) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `Delete “${title}”? This permanently removes the chat and all messages.`,
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteConversation(homeId, conversationId);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      if (activeConversationId === conversationId) {
+        setMessages([]);
+        router.push(base);
+      }
       router.refresh();
     });
   }
@@ -208,17 +244,32 @@ export function ChatApp({
               conversations.map((c) => {
                 const active = c.id === activeConversationId;
                 return (
-                  <UnstyledButton
+                  <div
                     key={c.id}
-                    component={Link}
-                    href={`${base}/${c.id}`}
-                    className={`chat-conv-link${active ? " chat-conv-link--active" : ""}`}
-                    onClick={() => setSidebarOpen(false)}
+                    className={`chat-conv-row${active ? " chat-conv-row--active" : ""}`}
                   >
-                    <Text size="sm" fw={550} lineClamp={1}>
-                      {c.title}
-                    </Text>
-                  </UnstyledButton>
+                    <UnstyledButton
+                      component={Link}
+                      href={`${base}/${c.id}`}
+                      className={`chat-conv-link${active ? " chat-conv-link--active" : ""}`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <Text size="sm" fw={550} lineClamp={1}>
+                        {c.title}
+                      </Text>
+                    </UnstyledButton>
+                    <ActionIcon
+                      className="chat-conv-delete"
+                      variant="subtle"
+                      color="gray"
+                      size="sm"
+                      aria-label={`Delete ${c.title}`}
+                      disabled={pending || streaming}
+                      onClick={(e) => void onDeleteChat(e, c.id, c.title)}
+                    >
+                      <IconTrash size={14} stroke={1.7} />
+                    </ActionIcon>
+                  </div>
                 );
               })
             )}

@@ -3,6 +3,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
+import { decryptChatText } from "../../lib/chat-crypto";
 import { isValidHomeId, normalizeHomeId } from "../../lib/home-id";
 import { withRls } from "../../src/db/rls";
 import {
@@ -37,7 +38,7 @@ export type ChatMessageRow = {
 };
 
 export async function getConversationsForHome(userId: string, homeId: string) {
-  return withRls(userId, async (tx) =>
+  const rows = await withRls(userId, async (tx) =>
     tx
       .select({
         id: chatConversations.id,
@@ -49,6 +50,11 @@ export async function getConversationsForHome(userId: string, homeId: string) {
       .where(eq(chatConversations.homeId, homeId))
       .orderBy(desc(chatConversations.updatedAt)),
   );
+
+  return rows.map((row) => ({
+    ...row,
+    title: decryptChatText(row.title),
+  }));
 }
 
 export async function getConversationForMember(
@@ -72,7 +78,13 @@ export async function getConversationForMember(
         ),
       )
       .limit(1);
-    return row ?? null;
+    if (!row) {
+      return null;
+    }
+    return {
+      ...row,
+      title: decryptChatText(row.title),
+    };
   });
 }
 
@@ -81,7 +93,7 @@ export async function getMessagesForConversation(
   homeId: string,
   conversationId: string,
 ) {
-  return withRls(userId, async (tx) =>
+  const rows = await withRls(userId, async (tx) =>
     tx
       .select({
         id: chatMessages.id,
@@ -100,6 +112,11 @@ export async function getMessagesForConversation(
       )
       .orderBy(asc(chatMessages.createdAt)),
   );
+
+  return rows.map((row) => ({
+    ...row,
+    content: decryptChatText(row.content),
+  }));
 }
 
 export async function createConversation(
@@ -146,5 +163,57 @@ export async function createConversation(
     return { id: created.id };
   } catch {
     return { error: "Could not create chat." };
+  }
+}
+
+export async function deleteConversation(
+  homeId: string,
+  conversationId: string,
+): Promise<{ error: string } | { ok: true }> {
+  const userId = await requireUserId();
+  const normalized = normalizeHomeId(homeId);
+  if (!isValidHomeId(normalized)) {
+    return { error: "Invalid home." };
+  }
+  if (!conversationId.trim()) {
+    return { error: "Invalid chat." };
+  }
+
+  try {
+    const deleted = await withRls(userId, async (tx) => {
+      const [membership] = await tx
+        .select({ homeId: homeMembers.homeId })
+        .from(homeMembers)
+        .where(
+          and(
+            eq(homeMembers.homeId, normalized),
+            eq(homeMembers.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!membership) {
+        throw new Error("Not a member");
+      }
+
+      const removed = await tx
+        .delete(chatConversations)
+        .where(
+          and(
+            eq(chatConversations.id, conversationId),
+            eq(chatConversations.homeId, normalized),
+          ),
+        )
+        .returning({ id: chatConversations.id });
+
+      return removed[0] ?? null;
+    });
+
+    if (!deleted) {
+      return { error: "Chat not found." };
+    }
+    return { ok: true };
+  } catch {
+    return { error: "Could not delete chat." };
   }
 }

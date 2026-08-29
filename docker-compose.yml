@@ -35,6 +35,7 @@ services:
       DATABASE_URL: postgres://app_runtime:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-app_local}
       DATABASE_URL_MIGRATE: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-app_local}
       AUTH_SECRET: ${AUTH_SECRET}
+      CHAT_CONTENT_ENCRYPTION_KEY: ${CHAT_CONTENT_ENCRYPTION_KEY}
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
       AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}

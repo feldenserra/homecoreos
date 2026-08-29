@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "../../../auth";
 import { getAiProvider, type AiChatMessage } from "../../../lib/ai";
+import { decryptChatText, encryptChatText } from "../../../lib/chat-crypto";
 import { isValidHomeId, normalizeHomeId } from "../../../lib/home-id";
 import { withRls } from "../../../src/db/rls";
 import {
@@ -72,12 +73,15 @@ export async function POST(req: Request) {
         throw new Error("FORBIDDEN");
       }
 
+      const titlePlain = titleFromMessage(message);
+      const titleCipher = encryptChatText(titlePlain);
+
       if (!conversationId) {
         const [created] = await tx
           .insert(chatConversations)
           .values({
             homeId,
-            title: titleFromMessage(message),
+            title: titleCipher,
             createdByUserId: userId,
           })
           .returning({ id: chatConversations.id });
@@ -98,11 +102,11 @@ export async function POST(req: Request) {
           throw new Error("NOT_FOUND");
         }
 
-        if (existing.title === "New chat") {
+        if (decryptChatText(existing.title) === "New chat") {
           await tx
             .update(chatConversations)
             .set({
-              title: titleFromMessage(message),
+              title: titleCipher,
               updatedAt: new Date(),
             })
             .where(eq(chatConversations.id, conversationId));
@@ -120,7 +124,7 @@ export async function POST(req: Request) {
           conversationId,
           homeId,
           role: "user",
-          content: message,
+          content: encryptChatText(message),
         })
         .returning({
           id: chatMessages.id,
@@ -145,7 +149,12 @@ export async function POST(req: Request) {
       return {
         conversationId,
         userMessageId: userMsg.id,
-        history: history.filter((m) => m.role !== "system") as AiChatMessage[],
+        history: history
+          .filter((m) => m.role !== "system")
+          .map((m) => ({
+            role: m.role,
+            content: decryptChatText(m.content),
+          })) as AiChatMessage[],
       };
     });
 
@@ -188,7 +197,7 @@ export async function POST(req: Request) {
                 conversationId: prepared.conversationId,
                 homeId,
                 role: "assistant",
-                content: assistantText || "(No response)",
+                content: encryptChatText(assistantText || "(No response)"),
               })
               .returning({
                 id: chatMessages.id,

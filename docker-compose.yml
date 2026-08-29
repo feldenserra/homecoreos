@@ -26,6 +26,8 @@ services:
     build:
       context: .
       target: runner
+      args:
+        RUNNING_LOCAL: ${RUNNING_LOCAL:-true}
     container_name: app_web
     ports:
       - "3000:3000"
@@ -43,6 +45,7 @@ services:
       AI_MODEL: ${AI_MODEL:-llama3.2}
       AI_API_KEY: ${AI_API_KEY:-ollama}
       AI_BASE_URL: ${AI_BASE_URL:-http://host.docker.internal:11434/v1}
+      RUNNING_LOCAL: ${RUNNING_LOCAL:-true}
       HOSTNAME: 0.0.0.0
       PORT: 3000
     extra_hosts:

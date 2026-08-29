@@ -8,22 +8,13 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HouseMark } from "../house-mark";
 
 const NAV = [
   { segment: "home", label: "Home", exact: true, Icon: IconHome },
   { segment: "tasks", label: "Tasks", exact: false, Icon: IconLayoutKanban },
   { segment: "chat", label: "Chat", exact: false, Icon: IconMessage },
 ] as const;
-
-function HouseMark() {
-  return (
-    <span className="home-shell-mark" aria-hidden>
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M8 2.4 14.4 8h-1.7v5.2H3.3V8H1.6L8 2.4z" />
-      </svg>
-    </span>
-  );
-}
 
 export function HomeShell({
   homeId,

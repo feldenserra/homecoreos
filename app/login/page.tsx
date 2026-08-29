@@ -1,4 +1,4 @@
-import { Center } from "@mantine/core";
+import { Text, Title } from "@mantine/core";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
 import { LoginForm } from "./login-form";
@@ -10,8 +10,16 @@ export default async function LoginPage() {
   }
 
   return (
-    <Center mih="100vh" p="md">
-      <LoginForm />
-    </Center>
+    <main className="login-page">
+      <div className="login-panel">
+        <Title order={1} className="wordmark" fz={36} mb={4}>
+          HomeCore
+        </Title>
+        <Text c="dimmed" size="sm" mb="xl">
+          Everything for the house, in one place.
+        </Text>
+        <LoginForm />
+      </div>
+    </main>
   );
 }

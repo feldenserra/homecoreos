@@ -1,14 +1,29 @@
 "use client";
 
-import { Group, Text, UnstyledButton } from "@mantine/core";
+import { Text } from "@mantine/core";
+import {
+  IconHome,
+  IconLayoutKanban,
+  IconMessage,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { segment: "home", label: "Home", exact: true },
-  { segment: "tasks", label: "Tasks", exact: false },
-  { segment: "chat", label: "Chat", exact: false },
+  { segment: "home", label: "Home", exact: true, Icon: IconHome },
+  { segment: "tasks", label: "Tasks", exact: false, Icon: IconLayoutKanban },
+  { segment: "chat", label: "Chat", exact: false, Icon: IconMessage },
 ] as const;
+
+function HouseMark() {
+  return (
+    <span className="home-shell-mark" aria-hidden>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 2.4 14.4 8h-1.7v5.2H3.3V8H1.6L8 2.4z" />
+      </svg>
+    </span>
+  );
+}
 
 export function HomeShell({
   homeId,
@@ -31,49 +46,60 @@ export function HomeShell({
 
   return (
     <div className="home-shell">
-      <header className="home-shell-header">
-        <Group justify="space-between" wrap="nowrap" gap="md" align="center">
-          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-            <Text
-              component={Link}
-              href="/app"
-              size="xs"
-              c="dimmed"
-              td="none"
-              className="brand-mark"
-              fw={600}
-              tt="uppercase"
-            >
-              HomeCore
-            </Text>
-            <Text size="sm" fw={600} lineClamp={1} style={{ minWidth: 0 }}>
-              {homeName}
-            </Text>
-            <Text size="xs" c="dimmed" ff="monospace" visibleFrom="sm">
-              {homeId}
-            </Text>
-          </Group>
+      <aside className="home-shell-rail" aria-label="Apps">
+        <Link href="/app" className="home-shell-rail-brand">
+          <HouseMark />
+          <Text className="wordmark" fz="md" c="inherit">
+            HomeCore
+          </Text>
+        </Link>
+        <nav className="home-shell-rail-nav">
+          {NAV.map((item) => {
+            const href =
+              item.segment === "home" ? base : `${base}/${item.segment}`;
+            const active = isActive(item.segment, item.exact);
+            return (
+              <Link
+                key={item.segment}
+                href={href}
+                className={`home-shell-rail-link${active ? " home-shell-rail-link--active" : ""}`}
+              >
+                <item.Icon size={20} stroke={1.7} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
 
-          <nav className="home-shell-nav" aria-label="Home">
-            {NAV.map((item) => {
-              const href =
-                item.segment === "home" ? base : `${base}/${item.segment}`;
-              const active = isActive(item.segment, item.exact);
-              return (
-                <UnstyledButton
-                  key={item.segment}
-                  component={Link}
-                  href={href}
-                  className={`home-shell-nav-link${active ? " home-shell-nav-link--active" : ""}`}
-                >
-                  {item.label}
-                </UnstyledButton>
-              );
-            })}
-          </nav>
-        </Group>
-      </header>
-      <div className="home-shell-body">{children}</div>
+      <div className="home-shell-main">
+        <header className="home-shell-header">
+          <Link href="/app" className="home-shell-switch" aria-label="Switch home">
+            <HouseMark />
+            <span className="home-shell-home-name">{homeName}</span>
+          </Link>
+        </header>
+
+        <div className="home-shell-body">{children}</div>
+
+        <nav className="home-shell-tabs" aria-label="Home">
+          {NAV.map((item) => {
+            const href =
+              item.segment === "home" ? base : `${base}/${item.segment}`;
+            const active = isActive(item.segment, item.exact);
+            return (
+              <Link
+                key={item.segment}
+                href={href}
+                className={`home-shell-tab${active ? " home-shell-tab--active" : ""}`}
+              >
+                <item.Icon size={22} stroke={1.7} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

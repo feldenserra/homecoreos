@@ -26,13 +26,11 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
   const [joinError, setJoinError] = useState<string | null>(null);
 
   return (
-    <Stack gap="xl" maw={420} w="100%" mx="auto">
+    <Stack gap="xl" w="100%">
       {homes.length > 0 ? (
         <Stack gap="sm">
-          <Text size="sm" c="dimmed" tt="uppercase" fw={600} lts={0.6}>
-            Your homes
-          </Text>
-          <Stack gap={6}>
+          <Text className="meta-label">Your homes</Text>
+          <Stack gap={8}>
             {homes.map((home) => (
               <UnstyledButton
                 key={home.id}
@@ -40,10 +38,10 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
                 href={`/app/${home.id}/home`}
                 className="home-gate-link"
               >
-                <Text fw={600} size="md">
+                <Text fw={650} size="md">
                   {home.name}
                 </Text>
-                <Text size="xs" c="dimmed" ff="monospace">
+                <Text size="xs" c="dimmed" ff="monospace" mt={2}>
                   {home.id}
                 </Text>
               </UnstyledButton>
@@ -54,11 +52,11 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
 
       <Stack gap="md" component="section">
         <div>
-          <Title order={2} fz="h3" fw={600}>
+          <Title order={2} className="display-title" fz={22} fw={550}>
             Create a home
           </Title>
           <Text size="sm" c="dimmed" mt={4}>
-            Start a shared board. You&apos;ll get an 8-character code to invite
+            Start a shared space. You&apos;ll get an 8-character code to invite
             others.
           </Text>
         </div>
@@ -83,15 +81,13 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
               required
               minLength={2}
               maxLength={64}
-              size="md"
-              radius="md"
             />
             {createError ? (
               <Text size="sm" c="red">
                 {createError}
               </Text>
             ) : null}
-            <Button type="submit" size="md" radius="md" loading={pending}>
+            <Button type="submit" loading={pending}>
               Create home
             </Button>
           </Stack>
@@ -100,7 +96,7 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
 
       <Stack gap="md" component="section">
         <div>
-          <Title order={2} fz="h3" fw={600}>
+          <Title order={2} className="display-title" fz={22} fw={550}>
             Join a home
           </Title>
           <Text size="sm" c="dimmed" mt={4}>
@@ -127,11 +123,9 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
               placeholder="A7K2M9QX"
               required
               maxLength={8}
-              size="md"
-              radius="md"
               styles={{
                 input: {
-                  fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                 },
@@ -142,13 +136,7 @@ export function HomeGate({ homes }: { homes: HomeSummary[] }) {
                 {joinError}
               </Text>
             ) : null}
-            <Button
-              type="submit"
-              variant="light"
-              size="md"
-              radius="md"
-              loading={pending}
-            >
+            <Button type="submit" variant="light" loading={pending}>
               Join home
             </Button>
           </Stack>

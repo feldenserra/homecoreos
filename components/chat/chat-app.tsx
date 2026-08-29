@@ -1,6 +1,15 @@
 "use client";
 
-import { Button, ScrollArea, Stack, Text, Textarea, UnstyledButton } from "@mantine/core";
+import {
+  ActionIcon,
+  Button,
+  ScrollArea,
+  Stack,
+  Text,
+  Textarea,
+  UnstyledButton,
+} from "@mantine/core";
+import { IconMessages, IconSend } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -38,6 +47,10 @@ export function ChatApp({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const base = `/app/${homeId}/home/chat`;
+
+  const activeTitle =
+    conversations.find((c) => c.id === activeConversationId)?.title ??
+    "New chat";
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -178,7 +191,6 @@ export function ChatApp({
         <div className="chat-sidebar-top">
           <Button
             fullWidth
-            radius="md"
             onClick={onNewChat}
             loading={pending}
             disabled={streaming}
@@ -218,35 +230,35 @@ export function ChatApp({
         <button
           type="button"
           className="chat-sidebar-backdrop"
-          aria-label="Close sidebar"
+          aria-label="Close chats"
           onClick={() => setSidebarOpen(false)}
         />
       ) : null}
 
       <section className="chat-main">
         <div className="chat-main-toolbar">
-          <Button
+          <ActionIcon
             variant="subtle"
             color="gray"
-            size="compact-md"
             hiddenFrom="sm"
+            aria-label="Chats"
             onClick={() => setSidebarOpen(true)}
           >
-            Chats
-          </Button>
-          <Text size="sm" c="dimmed" visibleFrom="sm">
-            {activeConversationId ? "Conversation" : "Start a new message"}
+            <IconMessages size={20} stroke={1.7} />
+          </ActionIcon>
+          <Text size="sm" fw={600} lineClamp={1}>
+            {activeConversationId ? activeTitle : "New chat"}
           </Text>
         </div>
 
         <div className="chat-messages">
           {messages.length === 0 ? (
             <div className="chat-empty">
-              <Text fw={650} fz={22}>
-                What can I help with?
+              <Text className="display-title" fz={26}>
+                What’s for dinner?
               </Text>
               <Text size="sm" c="dimmed" mt={8} maw={360}>
-                Ask about chores, meal ideas, or anything around the house.
+                Ask what’s still open, what’s for dinner, or what to do next.
               </Text>
             </div>
           ) : (
@@ -256,14 +268,13 @@ export function ChatApp({
                 .map((m) => (
                   <div
                     key={m.id}
-                    className={`chat-bubble chat-bubble--${m.role}`}
+                    className={`chat-row chat-row--${m.role}`}
                   >
-                    <Text size="xs" fw={600} c="dimmed" mb={4}>
-                      {m.role === "user" ? "You" : "Assistant"}
-                    </Text>
-                    <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                      {m.content || (streaming ? "…" : "")}
-                    </Text>
+                    <div className={`chat-bubble chat-bubble--${m.role}`}>
+                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                        {m.content || (streaming ? "…" : "")}
+                      </Text>
+                    </div>
                   </div>
                 ))}
               <div ref={bottomRef} />
@@ -278,31 +289,37 @@ export function ChatApp({
                 {error}
               </Text>
             ) : null}
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.currentTarget.value)}
-              placeholder="Message HomeCore…"
-              minRows={1}
-              maxRows={6}
-              autosize
-              radius="md"
-              disabled={streaming}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void onSend(e);
-                }
-              }}
-            />
-            <Button
-              type="submit"
-              radius="md"
-              loading={streaming}
-              disabled={!input.trim()}
-              style={{ alignSelf: "flex-end" }}
-            >
-              Send
-            </Button>
+            <div className="chat-composer-row">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.currentTarget.value)}
+                placeholder="Ask the house…"
+                minRows={1}
+                maxRows={6}
+                autosize
+                disabled={streaming}
+                style={{ flex: 1 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void onSend(e);
+                  }
+                }}
+              />
+              <ActionIcon
+                type="submit"
+                className="chat-send"
+                size={44}
+                radius="md"
+                variant="filled"
+                color="clay"
+                loading={streaming}
+                disabled={!input.trim()}
+                aria-label="Send"
+              >
+                <IconSend size={18} stroke={1.8} />
+              </ActionIcon>
+            </div>
           </Stack>
         </form>
       </section>

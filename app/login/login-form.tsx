@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Button,
   Divider,
-  Paper,
   PasswordInput,
   Stack,
   Text,
@@ -21,12 +20,14 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <Paper withBorder shadow="sm" p="xl" radius="md" maw={420} w="100%">
+    <div className="login-form">
       <Stack gap="md">
         <div>
-          <Title order={2}>Sign in</Title>
+          <Title order={2} className="display-title" fw={550}>
+            Sign in
+          </Title>
           <Text c="dimmed" size="sm" mt={4}>
-            Use email and password, or continue with GitHub.
+            Email and password, or continue with GitHub.
           </Text>
         </div>
 
@@ -83,6 +84,6 @@ export function LoginForm() {
           </Button>
         </form>
       </Stack>
-    </Paper>
+    </div>
   );
 }

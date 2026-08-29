@@ -20,17 +20,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Badge,
-  Box,
-  Button,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Box, Button, Group, Stack, Text, TextInput } from "@mantine/core";
+import { IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createTask, moveTask } from "../../app/app/actions";
 import { TASK_STATUSES, type TaskStatus } from "../../lib/types";
 
@@ -45,26 +38,22 @@ export type KanbanTask = {
 
 const COLUMN_META: Record<
   TaskStatus,
-  { label: string; color: string; accent: string }
+  { label: string; accent: string }
 > = {
   not_started: {
     label: "Not started",
-    color: "gray",
     accent: "var(--hc-col-not-started)",
   },
   in_progress: {
     label: "In progress",
-    color: "blue",
     accent: "var(--hc-col-in-progress)",
   },
   stuck: {
     label: "Stuck",
-    color: "orange",
     accent: "var(--hc-col-stuck)",
   },
   complete: {
     label: "Complete",
-    color: "teal",
     accent: "var(--hc-col-complete)",
   },
 };
@@ -152,9 +141,9 @@ function Column({
         <Text fw={600} size="sm">
           {meta.label}
         </Text>
-        <Badge size="sm" variant="light" color={meta.color} radius="sm">
+        <span className={`status-badge status-badge--${status}`}>
           {tasks.length}
-        </Badge>
+        </span>
       </Group>
       <SortableContext
         items={tasks.map((t) => t.id)}
@@ -178,12 +167,14 @@ export function KanbanBoard({
   initialTasks: KanbanTask[];
 }) {
   const router = useRouter();
+  const boardRef = useRef<HTMLDivElement | null>(null);
   const [tasks, setTasks] = useState(initialTasks);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [dndReady, setDndReady] = useState(false);
+  const [activeCol, setActiveCol] = useState(0);
 
   useEffect(() => {
     setDndReady(true);
@@ -202,6 +193,33 @@ export function KanbanBoard({
       activationConstraint: { delay: 180, tolerance: 8 },
     }),
   );
+
+  function onBoardScroll() {
+    const el = boardRef.current;
+    if (!el) {
+      return;
+    }
+    const first = el.children[0] as HTMLElement | undefined;
+    if (!first) {
+      return;
+    }
+    const colWidth = first.offsetWidth + 12;
+    setActiveCol(
+      Math.min(
+        TASK_STATUSES.length - 1,
+        Math.max(0, Math.round(el.scrollLeft / colWidth)),
+      ),
+    );
+  }
+
+  function scrollToColumn(index: number) {
+    const el = boardRef.current;
+    if (!el) {
+      return;
+    }
+    const col = el.children[index] as HTMLElement | undefined;
+    col?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+  }
 
   function findContainer(id: string): TaskStatus | null {
     if (TASK_STATUSES.includes(id as TaskStatus)) {
@@ -312,22 +330,64 @@ export function KanbanBoard({
     });
   }
 
-  return (
-    <Box className="kanban-page">
-      <header className="kanban-toolbar">
-        <Group justify="flex-end" wrap="nowrap">
-          <Button
-            size="md"
-            radius="md"
-            onClick={() => {
-              setAddError(null);
-              setAddOpen(true);
+  const board = (
+    <div
+      ref={boardRef}
+      className="kanban-board"
+      onScroll={onBoardScroll}
+    >
+      {TASK_STATUSES.map((status) =>
+        dndReady ? (
+          <Column key={status} status={status} tasks={columns[status]} />
+        ) : (
+          <Box
+            key={status}
+            className="kanban-column"
+            style={{
+              ["--col-accent" as string]: COLUMN_META[status].accent,
             }}
           >
-            Add task
-          </Button>
-        </Group>
-      </header>
+            <Group justify="space-between" mb="sm" wrap="nowrap">
+              <Text fw={600} size="sm">
+                {COLUMN_META[status].label}
+              </Text>
+              <span className={`status-badge status-badge--${status}`}>
+                {columns[status].length}
+              </span>
+            </Group>
+            <Stack gap={8} mih={48}>
+              {columns[status].map((task) => (
+                <Box key={task.id} className="task-card">
+                  <Text fw={550} size="sm" lh={1.35}>
+                    {task.title}
+                  </Text>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+        ),
+      )}
+    </div>
+  );
+
+  return (
+    <Box className="kanban-page">
+      <div className="kanban-pager" role="tablist" aria-label="Task columns">
+        {TASK_STATUSES.map((status, index) => (
+          <button
+            key={status}
+            type="button"
+            role="tab"
+            aria-selected={activeCol === index}
+            className={`kanban-pager-chip${activeCol === index ? " kanban-pager-chip--active" : ""}`}
+            style={{ ["--col-accent" as string]: COLUMN_META[status].accent }}
+            onClick={() => scrollToColumn(index)}
+          >
+            <span className="kanban-pager-dot" />
+            {COLUMN_META[status].label}
+          </button>
+        ))}
+      </div>
 
       {dndReady ? (
         <DndContext
@@ -337,54 +397,17 @@ export function KanbanBoard({
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
         >
-          <div className="kanban-board">
-            {TASK_STATUSES.map((status) => (
-              <Column key={status} status={status} tasks={columns[status]} />
-            ))}
-          </div>
+          {board}
           <DragOverlay>
             {activeTask ? <TaskCard task={activeTask} dragging /> : null}
           </DragOverlay>
         </DndContext>
       ) : (
-        <div className="kanban-board">
-          {TASK_STATUSES.map((status) => (
-            <Box
-              key={status}
-              className="kanban-column"
-              style={{
-                ["--col-accent" as string]: COLUMN_META[status].accent,
-              }}
-            >
-              <Group justify="space-between" mb="sm" wrap="nowrap">
-                <Text fw={600} size="sm">
-                  {COLUMN_META[status].label}
-                </Text>
-                <Badge
-                  size="sm"
-                  variant="light"
-                  color={COLUMN_META[status].color}
-                  radius="sm"
-                >
-                  {columns[status].length}
-                </Badge>
-              </Group>
-              <Stack gap={8} mih={48}>
-                {columns[status].map((task) => (
-                  <Box key={task.id} className="task-card">
-                    <Text fw={550} size="sm" lh={1.35}>
-                      {task.title}
-                    </Text>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-          ))}
-        </div>
+        board
       )}
 
       {addOpen ? (
-        <Box className="add-task-panel" component="section">
+        <Box className="add-task-sheet" component="section">
           <form
             action={(formData) => {
               setAddError(null);
@@ -419,8 +442,6 @@ export function KanbanBoard({
                 placeholder="What needs doing?"
                 required
                 autoFocus
-                size="md"
-                radius="md"
                 maxLength={200}
               />
               {addError ? (
@@ -428,13 +449,25 @@ export function KanbanBoard({
                   {addError}
                 </Text>
               ) : null}
-              <Button type="submit" size="md" radius="md" loading={pending}>
+              <Button type="submit" loading={pending}>
                 Add to Not started
               </Button>
             </Stack>
           </form>
         </Box>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          className="add-task-fab"
+          aria-label="Add task"
+          onClick={() => {
+            setAddError(null);
+            setAddOpen(true);
+          }}
+        >
+          <IconPlus size={24} stroke={2} />
+        </button>
+      )}
     </Box>
   );
 }

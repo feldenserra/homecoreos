@@ -13,30 +13,24 @@ export default async function AppGatePage() {
   const homes = await getHomesForUser(session.user.id);
 
   return (
-    <main className="app-shell">
-      <Stack gap="xl" p="md" pt="xl" maw={480} mx="auto" w="100%">
+    <main className="home-gate-page">
+      <Stack gap="xl" maw={420} mx="auto" w="100%">
         <Stack gap={6}>
-          <Text
-            size="xs"
-            tt="uppercase"
-            fw={600}
-            lts={1.2}
-            c="dimmed"
-            className="brand-mark"
-          >
+          <Text className="wordmark" fz={22}>
             HomeCore
           </Text>
-          <Title order={1} fz={28} fw={650} lh={1.15}>
-            Choose a home
+          <Title order={1} className="display-title" fz={32} fw={550} lh={1.15}>
+            Which house?
           </Title>
           <Text size="sm" c="dimmed" maw={360}>
-            Create a new shared space or join one with an invite code.
+            Create a shared space or join one with an invite code.
           </Text>
         </Stack>
 
         <HomeGate homes={homes} />
 
         <form
+          className="home-gate-signout"
           action={async () => {
             "use server";
             await signOut({ redirectTo: "/" });

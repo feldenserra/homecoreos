@@ -1,4 +1,5 @@
-import { Group, Stack, Text, Title } from "@mantine/core";
+import { Stack, Text, Title } from "@mantine/core";
+import { IconLayoutKanban, IconMessage } from "@tabler/icons-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
@@ -51,69 +52,51 @@ export default async function HomeDashboardPage({
     session.user.email?.split("@")[0] ??
     "there";
 
+  const snapshot =
+    openCount === 0
+      ? "Nothing open"
+      : counts.stuck > 0
+        ? `${openCount} open · ${counts.stuck} stuck`
+        : `${openCount} open`;
+
+  const taskMeta =
+    openCount === 0
+      ? "Nothing open"
+      : `${openCount} open · ${counts.complete} done`;
+
   return (
-    <main className="app-shell dashboard-page">
-      <Stack gap="xl" maw={720} mx="auto" w="100%" px="md" py="xl">
+    <main className="dashboard-page">
+      <Stack gap="xl" maw={720} mx="auto" w="100%">
         <Stack gap={8}>
-          <Text
-            size="xs"
-            tt="uppercase"
-            fw={600}
-            lts={1.2}
-            c="dimmed"
-            className="brand-mark"
+          <Title
+            order={1}
+            className="display-title"
+            fz={{ base: 34, sm: 42 }}
+            fw={550}
+            lh={1.1}
           >
-            Welcome back
-          </Text>
-          <Title order={1} fz={{ base: 32, sm: 40 }} fw={650} lh={1.1}>
             Hey {firstName}
           </Title>
-          <Text size="md" c="dimmed" maw={420}>
-            {home.name} is ready. Pick a place to start.
+          <Text size="md" c="dimmed">
+            {snapshot}
           </Text>
         </Stack>
 
-        <div className="dashboard-tiles">
-          <Link
-            href={`/app/${home.id}/home/tasks`}
-            className="dashboard-tile dashboard-tile--tasks"
-          >
-            <Text size="xs" fw={600} tt="uppercase" lts={0.8} c="dimmed">
-              Board
-            </Text>
-            <Text fw={650} fz={22} mt={6}>
-              Tasks
-            </Text>
-            <Text size="sm" c="dimmed" mt={8}>
-              {openCount === 0
-                ? "Nothing open — add something when you’re ready."
-                : `${openCount} open · ${counts.complete} done`}
-            </Text>
-            <Group gap={8} mt="md">
-              <span className="dashboard-pill">
-                {counts.in_progress} in progress
-              </span>
-              {counts.stuck > 0 ? (
-                <span className="dashboard-pill dashboard-pill--warn">
-                  {counts.stuck} stuck
-                </span>
-              ) : null}
-            </Group>
+        <div className="app-grid">
+          <Link href={`/app/${home.id}/home/tasks`} className="app-tile">
+            <span className="app-tile-icon">
+              <IconLayoutKanban size={22} stroke={1.7} />
+            </span>
+            <span className="app-tile-name">Tasks</span>
+            <span className="app-tile-meta">{taskMeta}</span>
           </Link>
 
-          <Link
-            href={`/app/${home.id}/home/chat`}
-            className="dashboard-tile dashboard-tile--chat"
-          >
-            <Text size="xs" fw={600} tt="uppercase" lts={0.8} c="dimmed">
-              Assistant
-            </Text>
-            <Text fw={650} fz={22} mt={6}>
-              Chat
-            </Text>
-            <Text size="sm" c="dimmed" mt={8}>
-              Ask anything about the house — lists, ideas, next steps.
-            </Text>
+          <Link href={`/app/${home.id}/home/chat`} className="app-tile">
+            <span className="app-tile-icon">
+              <IconMessage size={22} stroke={1.7} />
+            </span>
+            <span className="app-tile-name">Chat</span>
+            <span className="app-tile-meta">Ask the house</span>
           </Link>
         </div>
       </Stack>

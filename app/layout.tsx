@@ -6,7 +6,7 @@ import {
   ColorSchemeScript,
   mantineHtmlProps,
 } from "@mantine/core";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { theme } from "../theme";
 
 const sans = Geist({
@@ -14,7 +14,7 @@ const sans = Geist({
   variable: "--font-sans",
 });
 
-const display = Geist({
+const display = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
 });
@@ -26,7 +26,7 @@ const mono = Geist_Mono({
 
 export const metadata = {
   title: "HomeCore",
-  description: "Shared home tasks, simply.",
+  description: "Everything for the house, in one place.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -38,15 +38,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
-        <ColorSchemeScript defaultColorScheme="light" />
+        <ColorSchemeScript forceColorScheme="light" />
         <link rel="shortcut icon" href="/favicon.svg" />
+        <meta name="theme-color" content="#F3EDE3" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta
           name="viewport"
           content="minimum-scale=1, initial-scale=1, width=device-width, viewport-fit=cover"
         />
       </head>
       <body>
-        <MantineProvider theme={theme} defaultColorScheme="light">
+        <MantineProvider theme={theme} forceColorScheme="light">
           {children}
         </MantineProvider>
       </body>

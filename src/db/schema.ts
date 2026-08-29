@@ -6,11 +6,21 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import type { AdapterAccountType } from "next-auth/adapters";
-import type { HomeMemberRole, TaskStatus } from "../../lib/types";
+import type {
+  AdapterAccountType,
+} from "next-auth/adapters";
+import type {
+  ChatMessageRole,
+  HomeMemberRole,
+  TaskStatus,
+} from "../../lib/types";
 
-export type { HomeMemberRole, TaskStatus } from "../../lib/types";
-export { HOME_MEMBER_ROLES, TASK_STATUSES } from "../../lib/types";
+export type { ChatMessageRole, HomeMemberRole, TaskStatus } from "../../lib/types";
+export {
+  CHAT_MESSAGE_ROLES,
+  HOME_MEMBER_ROLES,
+  TASK_STATUSES,
+} from "../../lib/types";
 
 export const users = pgTable("user", {
   id: text("id")
@@ -118,6 +128,54 @@ export const tasks = pgTable(
       table.homeId,
       table.status,
       table.position,
+    ),
+  ],
+);
+
+export const chatConversations = pgTable(
+  "chat_conversation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    homeId: text("homeId")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("New chat"),
+    createdByUserId: text("createdByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_conversation_home_updated_idx").on(
+      table.homeId,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const chatMessages = pgTable(
+  "chat_message",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: text("conversationId")
+      .notNull()
+      .references(() => chatConversations.id, { onDelete: "cascade" }),
+    homeId: text("homeId")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    role: text("role").$type<ChatMessageRole>().notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_message_conversation_created_idx").on(
+      table.conversationId,
+      table.createdAt,
     ),
   ],
 );

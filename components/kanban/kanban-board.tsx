@@ -28,9 +28,7 @@ import {
   Stack,
   Text,
   TextInput,
-  Title,
 } from "@mantine/core";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createTask, moveTask } from "../../app/app/actions";
@@ -174,11 +172,9 @@ function Column({
 
 export function KanbanBoard({
   homeId,
-  homeName,
   initialTasks,
 }: {
   homeId: string;
-  homeName: string;
   initialTasks: KanbanTask[];
 }) {
   const router = useRouter();
@@ -221,7 +217,9 @@ export function KanbanBoard({
 
   function onDragOver(event: DragOverEvent) {
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {
+      return;
+    }
 
     const activeContainer = findContainer(String(active.id));
     const overId = String(over.id);
@@ -237,7 +235,9 @@ export function KanbanBoard({
 
     setTasks((prev) => {
       const activeTask = prev.find((t) => t.id === active.id);
-      if (!activeTask) return prev;
+      if (!activeTask) {
+        return prev;
+      }
 
       const without = prev.filter((t) => t.id !== active.id);
       const overTasks = sortTasks(
@@ -265,14 +265,18 @@ export function KanbanBoard({
   function onDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
-    if (!over) return;
+    if (!over) {
+      return;
+    }
 
     const activeIdStr = String(active.id);
     const overId = String(over.id);
 
     setTasks((prev) => {
       const current = prev.find((t) => t.id === activeIdStr);
-      if (!current) return prev;
+      if (!current) {
+        return prev;
+      }
 
       const container = current.status;
       const columnTasks = sortTasks(prev.filter((t) => t.status === container));
@@ -281,7 +285,9 @@ export function KanbanBoard({
       if (newIndex < 0) {
         newIndex = columnTasks.length - 1;
       }
-      if (oldIndex < 0 || newIndex < 0) return prev;
+      if (oldIndex < 0 || newIndex < 0) {
+        return prev;
+      }
 
       const reordered = arrayMove(columnTasks, oldIndex, newIndex).map(
         (t, i) => ({ ...t, position: i }),
@@ -308,27 +314,8 @@ export function KanbanBoard({
 
   return (
     <Box className="kanban-page">
-      <header className="kanban-header">
-        <Group justify="space-between" wrap="nowrap" gap="sm">
-          <Stack gap={2} style={{ minWidth: 0 }}>
-          <Text
-            component={Link}
-            href="/app"
-            size="xs"
-            c="dimmed"
-            td="none"
-            className="brand-mark"
-            suppressHydrationWarning
-          >
-            HomeCore
-          </Text>
-            <Title order={1} fz={22} fw={650} lineClamp={1}>
-              {homeName}
-            </Title>
-            <Text size="xs" c="dimmed" ff="monospace">
-              {homeId}
-            </Text>
-          </Stack>
+      <header className="kanban-toolbar">
+        <Group justify="flex-end" wrap="nowrap">
           <Button
             size="md"
             radius="md"

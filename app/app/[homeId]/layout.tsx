@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../auth";
-import { getHomeForMember } from "../actions";
+import { HomeShell } from "../../../components/home/home-shell";
 import { isValidHomeId, normalizeHomeId } from "../../../lib/home-id";
+import { getHomeForMember } from "../actions";
 
 export default async function HomeLayout({
   children,
@@ -27,5 +28,9 @@ export default async function HomeLayout({
     redirect("/app");
   }
 
-  return children;
+  return (
+    <HomeShell homeId={home.id} homeName={home.name}>
+      {children}
+    </HomeShell>
+  );
 }

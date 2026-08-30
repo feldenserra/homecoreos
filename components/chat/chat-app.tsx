@@ -22,6 +22,7 @@ import {
   DEFAULT_SYSTEM_PROMPT,
   MAX_SYSTEM_PROMPT_LENGTH,
 } from "../../lib/chat-prompt";
+import { AiSettings } from "./ai-settings";
 
 export type ChatConversationListItem = {
   id: string;
@@ -248,14 +249,17 @@ export function ChatApp({
         className={`chat-sidebar${sidebarOpen ? " chat-sidebar--open" : ""}`}
       >
         <div className="chat-sidebar-top">
-          <Button
-            fullWidth
-            onClick={onNewChat}
-            loading={mutating}
-            disabled={streaming}
-          >
-            New chat
-          </Button>
+          <Stack gap={8}>
+            <Button
+              fullWidth
+              onClick={onNewChat}
+              loading={mutating}
+              disabled={streaming}
+            >
+              New chat
+            </Button>
+            <AiSettings />
+          </Stack>
         </div>
         <ScrollArea className="chat-sidebar-list" type="scroll">
           <Stack gap={4} p="xs">

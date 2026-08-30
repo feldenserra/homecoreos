@@ -11,13 +11,20 @@ import type {
   AdapterAccountType,
 } from "next-auth/adapters";
 import type {
+  AiKeySource,
   ChatMessageRole,
   HomeMemberRole,
   TaskStatus,
 } from "../../lib/types";
 
-export type { ChatMessageRole, HomeMemberRole, TaskStatus } from "../../lib/types";
+export type {
+  AiKeySource,
+  ChatMessageRole,
+  HomeMemberRole,
+  TaskStatus,
+} from "../../lib/types";
 export {
+  AI_KEY_SOURCES,
   CHAT_MESSAGE_ROLES,
   HOME_MEMBER_ROLES,
   TASK_STATUSES,
@@ -183,5 +190,27 @@ export const chatMessages = pgTable(
       table.conversationId,
       table.createdAt,
     ),
+  ],
+);
+
+export const userAiKeys = pgTable(
+  "user_ai_key",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source").$type<AiKeySource>().notNull(),
+    url: text("url"),
+    model: text("model"),
+    accountId: text("accountId"),
+    apiKey: text("apiKey"),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_ai_key_user_source_idx").on(table.userId, table.source),
   ],
 );

@@ -144,6 +144,7 @@ export async function POST(req: Request) {
 
   try {
     const prepared = await withRls(userId, async (tx) => {
+      const ownerUserId = userId;
       const [membership] = await tx
         .select({ homeId: homeMembers.homeId })
         .from(homeMembers)
@@ -170,7 +171,10 @@ export async function POST(req: Request) {
           })
           .from(userAiKeys)
           .where(
-            and(eq(userAiKeys.userId, userId), eq(userAiKeys.source, source)),
+            and(
+              eq(userAiKeys.userId, ownerUserId),
+              eq(userAiKeys.source, source),
+            ),
           )
           .limit(1);
         if (!key) {

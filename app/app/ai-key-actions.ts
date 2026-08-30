@@ -131,9 +131,10 @@ export async function saveAiKey(
       }
 
       const accountId = input.accountId?.trim() ?? "";
+      const model = input.model?.trim() ?? "";
       const apiKey = input.apiKey?.trim() ?? "";
-      if (!accountId) {
-        return { error: "Account ID is required." };
+      if (!accountId || !model) {
+        return { error: "Account ID and model are required." };
       }
       if (!existing && !apiKey) {
         return { error: "API key is required." };
@@ -141,7 +142,7 @@ export async function saveAiKey(
 
       const values = {
         url: null,
-        model: null,
+        model,
         accountId,
         apiKey: apiKey ? encryptChatText(apiKey) : existing!.apiKey,
         updatedAt: new Date(),

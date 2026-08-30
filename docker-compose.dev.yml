@@ -23,10 +23,6 @@ services:
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
       AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
-      AI_PROVIDER: ${AI_PROVIDER:-ollama}
-      AI_MODEL: ${AI_MODEL:-llama3.2}
-      AI_API_KEY: ${AI_API_KEY:-ollama}
-      AI_BASE_URL: ${AI_BASE_URL:-http://127.0.0.1:11434/v1}
       RUNNING_LOCAL: ${RUNNING_LOCAL:-true}
       NODE_ENV: development
     command: yarn dev --hostname 0.0.0.0 --port 3000

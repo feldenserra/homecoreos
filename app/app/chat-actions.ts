@@ -69,6 +69,8 @@ export async function getConversationForMember(
         homeId: chatConversations.homeId,
         title: chatConversations.title,
         systemPrompt: chatConversations.systemPrompt,
+        aiSource: chatConversations.aiSource,
+        aiModel: chatConversations.aiModel,
         updatedAt: chatConversations.updatedAt,
       })
       .from(chatConversations)
@@ -88,6 +90,8 @@ export async function getConversationForMember(
       systemPrompt: row.systemPrompt
         ? decryptChatText(row.systemPrompt)
         : null,
+      aiSource: row.aiSource,
+      aiModel: row.aiModel,
     };
   });
 }

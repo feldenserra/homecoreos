@@ -41,6 +41,8 @@ export default async function ChatIndexPage({
         activeConversationId={null}
         initialMessages={[]}
         initialSystemPrompt={DEFAULT_SYSTEM_PROMPT}
+        initialAiSource={null}
+        initialAiModel={null}
       />
     </main>
   );

@@ -43,6 +43,13 @@
       "when": 1787994000000,
       "tag": "0005_user_ai_key",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787996000000,
+      "tag": "0006_chat_ai_snapshot",
+      "breakpoints": true
     }
   ]
 }

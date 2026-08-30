@@ -19,21 +19,21 @@ import {
   type AiKeyListItem,
 } from "../../app/app/ai-key-actions";
 import {
+  AI_KEY_SOURCE_LABELS,
   AI_KEY_SOURCES,
   type AiKeySource,
 } from "../../lib/types";
 
-const SOURCE_LABELS: Record<AiKeySource, string> = {
-  ollama: "Ollama",
-  cloudflare: "Cloudflare",
+type AiSettingsProps = {
+  onKeysChange?: () => void;
 };
 
 const SOURCE_OPTIONS = AI_KEY_SOURCES.map((source) => ({
   value: source,
-  label: SOURCE_LABELS[source],
+  label: AI_KEY_SOURCE_LABELS[source],
 }));
 
-export function AiSettings() {
+export function AiSettings({ onKeysChange }: AiSettingsProps = {}) {
   const [opened, setOpened] = useState(false);
   const [pending, startTransition] = useTransition();
   const [keys, setKeys] = useState<AiKeyListItem[]>([]);
@@ -126,13 +126,14 @@ export function AiSettings() {
       setMode("list");
       setEditing(false);
       setApiKey("");
+      onKeysChange?.();
     });
   }
 
   function onDelete(item: AiKeyListItem) {
     if (
       !window.confirm(
-        `Remove the ${SOURCE_LABELS[item.source]} setting? You can add it again later.`,
+        `Remove the ${AI_KEY_SOURCE_LABELS[item.source]} setting? You can add it again later.`,
       )
     ) {
       return;
@@ -150,6 +151,7 @@ export function AiSettings() {
         return;
       }
       setKeys(next.keys);
+      onKeysChange?.();
     });
   }
 
@@ -188,7 +190,7 @@ export function AiSettings() {
                     <div key={key.id} className="ai-key-row">
                       <div>
                         <Text size="sm" fw={600}>
-                          {SOURCE_LABELS[key.source]}
+                          {AI_KEY_SOURCE_LABELS[key.source]}
                         </Text>
                         {key.source === "ollama" ? (
                           <Text size="xs" c="dimmed">
@@ -197,8 +199,8 @@ export function AiSettings() {
                           </Text>
                         ) : (
                           <Text size="xs" c="dimmed">
-                            {key.accountId}
-                            {key.hasApiKey ? " · API key saved" : ""}
+                            {key.model}
+                            {key.accountId ? ` · ${key.accountId}` : ""}
                           </Text>
                         )}
                       </div>
@@ -239,7 +241,7 @@ export function AiSettings() {
             <Stack gap="sm">
               {editing ? (
                 <Text size="sm" fw={600}>
-                  {SOURCE_LABELS[source]}
+                  {AI_KEY_SOURCE_LABELS[source]}
                 </Text>
               ) : availableSources.length > 1 ? (
                 <Select
@@ -256,7 +258,7 @@ export function AiSettings() {
                 />
               ) : (
                 <Text size="sm" fw={600}>
-                  {SOURCE_LABELS[source]}
+                  {AI_KEY_SOURCE_LABELS[source]}
                 </Text>
               )}
 
@@ -284,6 +286,13 @@ export function AiSettings() {
                     placeholder="Cloudflare account ID"
                     value={accountId}
                     onChange={(e) => setAccountId(e.currentTarget.value)}
+                    required
+                  />
+                  <TextInput
+                    label="Model"
+                    placeholder="@cf/meta/llama-3.1-8b-instruct"
+                    value={model}
+                    onChange={(e) => setModel(e.currentTarget.value)}
                     required
                   />
                   <PasswordInput

@@ -5,6 +5,7 @@ import {
   Button,
   Collapse,
   ScrollArea,
+  Select,
   Stack,
   Text,
   Textarea,
@@ -15,6 +16,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
+  getAiKeysForUser,
+  type AiKeyListItem,
+} from "../../app/app/ai-key-actions";
+import {
   createConversation,
   deleteConversation,
 } from "../../app/app/chat-actions";
@@ -22,6 +27,11 @@ import {
   DEFAULT_SYSTEM_PROMPT,
   MAX_SYSTEM_PROMPT_LENGTH,
 } from "../../lib/chat-prompt";
+import {
+  AI_KEY_SOURCE_LABELS,
+  AI_KEY_SOURCES,
+  type AiKeySource,
+} from "../../lib/types";
 import { AiSettings } from "./ai-settings";
 
 export type ChatConversationListItem = {
@@ -36,18 +46,31 @@ export type ChatUiMessage = {
   content: string;
 };
 
+function isAiKeySource(value: string): value is AiKeySource {
+  return (AI_KEY_SOURCES as readonly string[]).includes(value);
+}
+
+function keyLabel(key: AiKeyListItem) {
+  const provider = AI_KEY_SOURCE_LABELS[key.source];
+  return key.model ? `${provider} · ${key.model}` : provider;
+}
+
 export function ChatApp({
   homeId,
   conversations,
   activeConversationId,
   initialMessages,
   initialSystemPrompt,
+  initialAiSource,
+  initialAiModel,
 }: {
   homeId: string;
   conversations: ChatConversationListItem[];
   activeConversationId: string | null;
   initialMessages: ChatUiMessage[];
   initialSystemPrompt: string;
+  initialAiSource: AiKeySource | null;
+  initialAiModel: string | null;
 }) {
   const router = useRouter();
   const [mutating, setMutating] = useState(false);
@@ -55,6 +78,9 @@ export function ChatApp({
   const [systemPrompt, setSystemPrompt] = useState(
     initialSystemPrompt || DEFAULT_SYSTEM_PROMPT,
   );
+  const [aiSource, setAiSource] = useState<AiKeySource | null>(initialAiSource);
+  const [aiModel, setAiModel] = useState(initialAiModel);
+  const [keys, setKeys] = useState<AiKeyListItem[]>([]);
   const [promptOpen, setPromptOpen] = useState(false);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -62,6 +88,17 @@ export function ChatApp({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const base = `/app/${homeId}/home/chat`;
+  const chatLocked = messages.length > 0;
+  const canSend = Boolean(input.trim() && !streaming && (chatLocked || aiSource));
+
+  async function loadKeys() {
+    const result = await getAiKeysForUser();
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setKeys(result.keys);
+  }
 
   const activeTitle =
     conversations.find((c) => c.id === activeConversationId)?.title ??
@@ -70,8 +107,28 @@ export function ChatApp({
   useEffect(() => {
     setMessages(initialMessages);
     setSystemPrompt(initialSystemPrompt || DEFAULT_SYSTEM_PROMPT);
+    setAiSource(initialAiSource);
+    setAiModel(initialAiModel);
     setPromptOpen(false);
-  }, [initialMessages, activeConversationId, initialSystemPrompt]);
+  }, [
+    initialMessages,
+    activeConversationId,
+    initialSystemPrompt,
+    initialAiSource,
+    initialAiModel,
+  ]);
+
+  useEffect(() => {
+    void loadKeys();
+  }, []);
+
+  useEffect(() => {
+    if (aiSource || keys.length !== 1) {
+      return;
+    }
+    setAiSource(keys[0].source);
+    setAiModel(keys[0].model);
+  }, [keys, aiSource]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,7 +193,7 @@ export function ChatApp({
   async function onSend(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || streaming) {
+    if (!text || streaming || (!chatLocked && !aiSource)) {
       return;
     }
 
@@ -162,6 +219,7 @@ export function ChatApp({
           conversationId: activeConversationId ?? undefined,
           message: text,
           systemPrompt,
+          aiSource: chatLocked ? undefined : aiSource,
         }),
       });
 
@@ -258,7 +316,7 @@ export function ChatApp({
             >
               New chat
             </Button>
-            <AiSettings />
+            <AiSettings onKeysChange={() => void loadKeys()} />
           </Stack>
         </div>
         <ScrollArea className="chat-sidebar-list" type="scroll">
@@ -327,25 +385,33 @@ export function ChatApp({
           <Text size="sm" fw={600} lineClamp={1} style={{ flex: 1 }}>
             {activeConversationId ? activeTitle : "New chat"}
           </Text>
-          {messages.length > 0 ? (
+          {chatLocked ? (
             <UnstyledButton
               className="chat-prompt-toggle"
               onClick={() => setPromptOpen((open) => !open)}
             >
               <Text size="sm" c="dimmed">
-                {promptOpen ? "Hide instructions" : "Instructions"}
+                {promptOpen ? "Hide" : "More"}
               </Text>
             </UnstyledButton>
           ) : null}
         </div>
 
-        {messages.length > 0 ? (
+        {chatLocked ? (
           <Collapse expanded={promptOpen}>
             <div className="chat-prompt-recall">
               <Text size="xs" fw={600} c="dimmed" mb={4}>
-                Instructions for this chat
+                AI
               </Text>
-              <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              <Text size="sm" c="dimmed">
+                {aiSource
+                  ? `${AI_KEY_SOURCE_LABELS[aiSource]}${aiModel ? ` · ${aiModel}` : ""}`
+                  : "Not set"}
+              </Text>
+              <Text size="xs" fw={600} c="dimmed" mt="sm" mb={4}>
+                Instructions
+              </Text>
+              <Text size="sm" c="dimmed" style={{ whiteSpace: "pre-wrap" }}>
                 {systemPrompt}
               </Text>
             </div>
@@ -361,6 +427,32 @@ export function ChatApp({
               <Text size="sm" c="dimmed" mt={8} maw={360}>
                 Ask what’s still open, what’s for dinner, or what to do next.
               </Text>
+              {keys.length === 0 ? (
+                <Text size="sm" c="dimmed" mt="lg" maw={360}>
+                  Add an AI setting first, then choose it here.
+                </Text>
+              ) : (
+                <Select
+                  className="chat-empty-prompt"
+                  label="AI"
+                  description="This is locked after you send the first message."
+                  data={keys.map((key) => ({
+                    value: key.source,
+                    label: keyLabel(key),
+                  }))}
+                  value={aiSource}
+                  onChange={(value) => {
+                    if (!value || !isAiKeySource(value)) {
+                      return;
+                    }
+                    const selected = keys.find((key) => key.source === value);
+                    setAiSource(value);
+                    setAiModel(selected?.model ?? null);
+                  }}
+                  disabled={streaming}
+                  mt="lg"
+                />
+              )}
               <Textarea
                 className="chat-empty-prompt"
                 label="Instructions"
@@ -372,7 +464,7 @@ export function ChatApp({
                 autosize
                 maxLength={MAX_SYSTEM_PROMPT_LENGTH}
                 disabled={streaming}
-                mt="lg"
+                mt="md"
               />
             </div>
           ) : (
@@ -411,7 +503,7 @@ export function ChatApp({
                 minRows={1}
                 maxRows={6}
                 autosize
-                disabled={streaming}
+                disabled={streaming || (!chatLocked && !aiSource)}
                 style={{ flex: 1 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -428,7 +520,7 @@ export function ChatApp({
                 variant="filled"
                 color="clay"
                 loading={streaming}
-                disabled={!input.trim()}
+                disabled={!canSend}
                 aria-label="Send"
               >
                 <IconSend size={18} stroke={1.8} />

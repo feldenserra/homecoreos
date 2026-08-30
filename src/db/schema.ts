@@ -155,6 +155,11 @@ export const chatConversations = pgTable(
       .references(() => homes.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
     systemPrompt: text("systemPrompt"),
+    aiSource: text("aiSource").$type<AiKeySource>(),
+    aiModel: text("aiModel"),
+    aiUrl: text("aiUrl"),
+    aiAccountId: text("aiAccountId"),
+    aiApiKey: text("aiApiKey"),
     createdByUserId: text("createdByUserId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

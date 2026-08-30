@@ -15,3 +15,8 @@ export type ChatMessageRole = (typeof CHAT_MESSAGE_ROLES)[number];
 
 export const AI_KEY_SOURCES = ["ollama", "cloudflare"] as const;
 export type AiKeySource = (typeof AI_KEY_SOURCES)[number];
+
+export const AI_KEY_SOURCE_LABELS: Record<AiKeySource, string> = {
+  ollama: "Ollama",
+  cloudflare: "Cloudflare",
+};

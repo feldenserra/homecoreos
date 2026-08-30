@@ -63,6 +63,8 @@ export default async function ChatConversationPage({
         initialSystemPrompt={
           conversation.systemPrompt || DEFAULT_SYSTEM_PROMPT
         }
+        initialAiSource={conversation.aiSource}
+        initialAiModel={conversation.aiModel}
       />
     </main>
   );

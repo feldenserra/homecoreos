@@ -1,2 +1,3 @@
 export type { AiChatMessage, AiChatRole, AiProvider, AiProviderId } from "./types";
-export { getAiProvider } from "./factory";
+export { createAiProviderFromConfig } from "./factory";
+export type { AiProviderConfig } from "./factory";

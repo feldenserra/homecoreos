@@ -10,7 +10,7 @@ export type AiStreamChatInput = {
   model?: string;
 };
 
-export type AiProviderId = "ollama" | "openai";
+export type AiProviderId = "ollama" | "cloudflare";
 
 export type AiProvider = {
   id: AiProviderId;

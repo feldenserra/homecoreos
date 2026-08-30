@@ -248,17 +248,22 @@ export async function createTask(
       throw new Error("Not a member");
     }
 
+    const statusRaw = String(formData.get("status") ?? "not_started");
+    const status = TASK_STATUSES.includes(statusRaw as TaskStatus)
+      ? (statusRaw as TaskStatus)
+      : "not_started";
+
     const [agg] = await tx
       .select({ maxPos: max(tasks.position) })
       .from(tasks)
-      .where(and(eq(tasks.homeId, homeId), eq(tasks.status, "not_started")));
+      .where(and(eq(tasks.homeId, homeId), eq(tasks.status, status)));
 
     const nextPos = (agg?.maxPos ?? -1) + 1;
 
     await tx.insert(tasks).values({
       homeId,
       title,
-      status: "not_started",
+      status,
       position: nextPos,
       createdByUserId: userId,
     });
@@ -309,6 +314,43 @@ export async function moveTask(input: {
     });
   } catch {
     return { error: "Could not move task." };
+  }
+
+  return { ok: true };
+}
+
+export async function deleteTask(input: {
+  homeId: string;
+  taskId: string;
+}): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const { homeId, taskId } = input;
+
+  if (!isValidHomeId(homeId)) {
+    return { error: "Invalid home." };
+  }
+  if (!taskId.trim()) {
+    return { error: "Invalid task." };
+  }
+
+  try {
+    await withRls(userId, async (tx) => {
+      const [task] = await tx
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.id, taskId), eq(tasks.homeId, homeId)))
+        .limit(1);
+
+      if (!task) {
+        throw new Error("Task not found");
+      }
+
+      await tx
+        .delete(tasks)
+        .where(and(eq(tasks.id, taskId), eq(tasks.homeId, homeId)));
+    });
+  } catch {
+    return { error: "Could not delete task." };
   }
 
   return { ok: true };

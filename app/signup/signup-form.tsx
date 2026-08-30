@@ -2,38 +2,40 @@
 
 import { useState } from "react";
 import {
+  Anchor,
   Button,
-  Divider,
   PasswordInput,
   Stack,
   Text,
   TextInput,
   Title,
 } from "@mantine/core";
-import {
-  signInWithCredentials,
-  signInWithGitHub,
-} from "./actions";
+import Link from "next/link";
+import { PlanRadios } from "../../components/billing/plan-radios";
+import type { SubscriptionPlan } from "../../lib/revenuecat/constants";
+import { registerWithPlan } from "./actions";
 
-export function LoginForm() {
+export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<SubscriptionPlan>("yearly");
 
   return (
     <div className="login-form">
       <Stack gap="md">
         <div>
           <Title order={2} className="display-title" fw={550}>
-            Sign in
+            Create account
           </Title>
           <Text c="dimmed" size="sm" mt={4}>
-            Email and password, or continue with GitHub.
+            Choose a plan, then pay to unlock HomeCore.
           </Text>
         </div>
 
         <form
           action={async (formData) => {
             setError(null);
-            const result = await signInWithCredentials(formData);
+            formData.set("plan", plan);
+            const result = await registerWithPlan(formData);
             if (result?.error) {
               setError(result.error);
             }
@@ -53,26 +55,28 @@ export function LoginForm() {
               placeholder="At least 8 characters"
               required
             />
+            <PasswordInput
+              name="confirmPassword"
+              label="Confirm password"
+              placeholder="Repeat your password"
+              required
+            />
+            <PlanRadios value={plan} onChange={setPlan} />
             {error ? (
               <Text c="red" size="sm">
                 {error}
               </Text>
             ) : null}
-            <Button type="submit">Sign in</Button>
+            <Button type="submit">Continue to payment</Button>
           </Stack>
         </form>
 
-        <Button component="a" href="/signup" variant="light" fullWidth>
-          Create account
-        </Button>
-
-        <Divider label="or" labelPosition="center" />
-
-        <form action={signInWithGitHub}>
-          <Button type="submit" variant="default" fullWidth>
-            Continue with GitHub
-          </Button>
-        </form>
+        <Text size="sm" c="dimmed" ta="center">
+          Already have an account?{" "}
+          <Anchor component={Link} href="/login" fw={600} size="sm">
+            Sign in
+          </Anchor>
+        </Text>
       </Stack>
     </div>
   );

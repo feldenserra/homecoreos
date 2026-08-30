@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgTable,
   primaryKey,
@@ -39,6 +40,9 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   passwordHash: text("passwordHash"),
+  entitlementActive: boolean("entitlementActive").notNull().default(false),
+  entitlementExpiresAt: timestamp("entitlementExpiresAt", { mode: "date" }),
+  entitlementCheckedAt: timestamp("entitlementCheckedAt", { mode: "date" }),
 });
 
 export const accounts = pgTable(

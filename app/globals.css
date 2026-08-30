@@ -88,6 +88,10 @@ body {
 .home-shell-header {
   flex-shrink: 0;
   z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px var(--hc-gutter);
   background: color-mix(in srgb, var(--hc-paper) 88%, transparent);
   backdrop-filter: blur(14px);
@@ -255,6 +259,34 @@ body {
   border-radius: var(--hc-radius-lg);
   background: var(--hc-surface);
   border: 1px solid var(--hc-line);
+}
+
+.subscribe-paywall {
+  min-height: 420px;
+  max-width: 968px;
+  width: 100%;
+}
+
+.subscribe-signout {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.manage-subscription {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.manage-subscription-error {
+  color: var(--mantine-color-red-6);
+  font-size: 12px;
+}
+
+.home-gate-page .manage-subscription {
+  align-items: center;
 }
 
 /* Home gate */

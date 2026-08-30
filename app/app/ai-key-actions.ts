@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
 import { decryptChatText, encryptChatText } from "../../lib/chat-crypto";
+import { requireUnlimitedAccess } from "../../lib/revenuecat/server";
 import {
   AI_KEY_SOURCES,
   type AiKeySource,
@@ -17,6 +18,7 @@ async function requireUserId() {
   if (!userId) {
     redirect("/login");
   }
+  await requireUnlimitedAccess(userId);
   return userId;
 }
 

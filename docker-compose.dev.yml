@@ -10,6 +10,8 @@ services:
     network_mode: host
     ports: !reset []
     extra_hosts: !reset []
+    env_file:
+      - .env
     volumes:
       - .:/app
       - web_node_modules:/app/node_modules
@@ -23,6 +25,9 @@ services:
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
       AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
+      NEXT_PUBLIC_REVENUECAT_WEB_API_KEY: ${NEXT_PUBLIC_REVENUECAT_WEB_API_KEY:-}
+      REVENUECAT_SECRET_API_KEY: ${REVENUECAT_SECRET_API_KEY:-}
+      REVENUECAT_WEBHOOK_AUTH: ${REVENUECAT_WEBHOOK_AUTH:-}
       NODE_ENV: development
     command: yarn dev --hostname 0.0.0.0 --port 3000
     working_dir: /app

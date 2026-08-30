@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HouseMark } from "../house-mark";
+import { ManageSubscriptionButton } from "../billing/manage-subscription-button";
 
 const NAV = [
   { segment: "home", label: "Home", exact: true, Icon: IconHome },
@@ -69,6 +70,7 @@ export function HomeShell({
             <HouseMark />
             <span className="home-shell-home-name">{homeName}</span>
           </Link>
+          <ManageSubscriptionButton />
         </header>
 
         <div className="home-shell-body">{children}</div>

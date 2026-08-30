@@ -4,6 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
 import { decryptChatText } from "../../lib/chat-crypto";
+import { requireUnlimitedAccess } from "../../lib/revenuecat/server";
 import { isValidHomeId, normalizeHomeId } from "../../lib/home-id";
 import { withRls } from "../../src/db/rls";
 import {
@@ -18,6 +19,7 @@ async function requireUserId() {
   if (!userId) {
     redirect("/login");
   }
+  await requireUnlimitedAccess(userId);
   return userId;
 }
 

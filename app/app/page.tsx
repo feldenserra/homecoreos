@@ -2,7 +2,9 @@ import { Button, Stack, Text, Title } from "@mantine/core";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "../../auth";
 import { MAX_CREATED_HOMES, MAX_JOINED_HOMES } from "../../lib/home-id";
+import { requireUnlimitedAccess } from "../../lib/revenuecat/server";
 import { getHomeQuota, getHomesForUser } from "./actions";
+import { ManageSubscriptionButton } from "../../components/billing/manage-subscription-button";
 import { HomeGate } from "./home-gate";
 
 export default async function AppGatePage() {
@@ -10,6 +12,7 @@ export default async function AppGatePage() {
   if (!session?.user?.id) {
     redirect("/login");
   }
+  await requireUnlimitedAccess(session.user.id);
 
   const [homes, quota] = await Promise.all([
     getHomesForUser(session.user.id),
@@ -36,6 +39,8 @@ export default async function AppGatePage() {
           canCreate={quota.createdCount < MAX_CREATED_HOMES}
           remainingJoins={Math.max(0, MAX_JOINED_HOMES - quota.joinedCount)}
         />
+
+        <ManageSubscriptionButton />
 
         <form
           className="home-gate-signout"

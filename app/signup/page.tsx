@@ -2,9 +2,9 @@ import { Text, Title } from "@mantine/core";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
 import { hasUnlimitedAccess } from "../../lib/revenuecat/server";
-import { LoginForm } from "./login-form";
+import { SignupForm } from "./signup-form";
 
-export default async function LoginPage() {
+export default async function SignupPage() {
   const session = await auth();
   if (session?.user?.id) {
     if (await hasUnlimitedAccess(session.user.id)) {
@@ -20,9 +20,9 @@ export default async function LoginPage() {
           HomeCore
         </Title>
         <Text c="dimmed" size="sm" mb="xl">
-          Everything for the house, in one place.
+          Subscribe to access everything for the house.
         </Text>
-        <LoginForm />
+        <SignupForm />
       </div>
     </main>
   );

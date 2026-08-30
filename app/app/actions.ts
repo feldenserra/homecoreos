@@ -16,6 +16,7 @@ import {
   homes,
   tasks,
 } from "../../src/db/schema";
+import { requireUnlimitedAccess } from "../../lib/revenuecat/server";
 import { TASK_STATUSES, type TaskStatus } from "../../lib/types";
 
 async function requireUserId() {
@@ -24,6 +25,7 @@ async function requireUserId() {
   if (!userId) {
     redirect("/login");
   }
+  await requireUnlimitedAccess(userId);
   return userId;
 }
 

@@ -2022,6 +2022,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@revenuecat/purchases-js@npm:^1.55.0":
+  version: 1.55.0
+  resolution: "@revenuecat/purchases-js@npm:1.55.0"
+  checksum: 10c0/74c6bdc491633b518ddbc9bfec243d6a6eacd9f86917b45fbc14a5e64f529efa195de10719175384e25765452901d0c33992dc57ee63f3159d9aa6925a43526d
+  languageName: node
+  linkType: hard
+
 "@sinclair/typebox@npm:^0.34.0":
   version: 0.34.52
   resolution: "@sinclair/typebox@npm:0.34.52"
@@ -4217,6 +4224,7 @@ __metadata:
     "@auth/drizzle-adapter": "npm:^1.11.3"
     "@mantine/core": "npm:9.4.2"
     "@mantine/hooks": "npm:9.4.2"
+    "@revenuecat/purchases-js": "npm:^1.55.0"
     "@tabler/icons-react": "npm:^3.46.0"
     "@types/jest": "npm:^30.0.0"
     "@types/node": "npm:24.3.3"

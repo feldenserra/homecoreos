@@ -4,57 +4,62 @@ import { eq } from "drizzle-orm";
 import { AuthError } from "next-auth";
 import { signIn } from "../../auth";
 import { hashPassword } from "../../lib/password";
-import {
-  isSubscriptionPlan,
-  type SubscriptionPlan,
-} from "../../lib/revenuecat/constants";
+import { DUPLICATE_EMAIL_ERROR, validateSignup } from "../../lib/signup";
 import { db } from "../../src/db";
 import { users } from "../../src/db/schema";
 
 function readSignup(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
-  const plan = String(formData.get("plan") ?? "");
-  return { email, password, confirmPassword, plan };
+  return { name, email, password, confirmPassword };
 }
 
-function validateSignup(
-  email: string,
-  password: string,
-  confirmPassword: string,
-  plan: string,
-): string | null {
-  if (!email || !email.includes("@")) {
-    return "Enter a valid email address.";
+function pgErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code: unknown }).code);
   }
-  if (password.length < 8) {
-    return "Password must be at least 8 characters.";
-  }
-  if (password !== confirmPassword) {
-    return "Passwords do not match.";
-  }
-  if (!isSubscriptionPlan(plan)) {
-    return "Choose a subscription plan.";
-  }
-  return null;
+  return undefined;
 }
 
-export async function registerWithPlan(formData: FormData) {
-  const { email, password, confirmPassword, plan } = readSignup(formData);
-  const validationError = validateSignup(
+function pgConstraint(err: unknown): string {
+  if (!err || typeof err !== "object") {
+    return "";
+  }
+  const e = err as { constraint_name?: unknown; constraint?: unknown };
+  return String(e.constraint_name ?? e.constraint ?? "");
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return String(err ?? "");
+}
+
+function isDuplicateEmailError(err: unknown): boolean {
+  const constraint = pgConstraint(err);
+  const message = errorMessage(err);
+  if (pgErrorCode(err) === "23505" && constraint.includes("user_email_unique")) {
+    return true;
+  }
+  return message.includes("user_email_unique");
+}
+
+export async function registerWithCredentials(formData: FormData) {
+  const { name, email, password, confirmPassword } = readSignup(formData);
+  const validationError = validateSignup({
+    name,
     email,
     password,
     confirmPassword,
-    plan,
-  );
+  });
   if (validationError) {
     return { error: validationError };
   }
-
-  const selectedPlan = plan as SubscriptionPlan;
 
   const [existing] = await db
     .select({ id: users.id })
@@ -63,20 +68,27 @@ export async function registerWithPlan(formData: FormData) {
     .limit(1);
 
   if (existing) {
-    return { error: "An account with this email already exists." };
+    return { error: DUPLICATE_EMAIL_ERROR };
   }
 
-  await db.insert(users).values({
-    email,
-    name: email.split("@")[0],
-    passwordHash: await hashPassword(password),
-  });
+  try {
+    await db.insert(users).values({
+      email,
+      name,
+      passwordHash: await hashPassword(password),
+    });
+  } catch (error) {
+    if (isDuplicateEmailError(error)) {
+      return { error: DUPLICATE_EMAIL_ERROR };
+    }
+    throw error;
+  }
 
   try {
     await signIn("credentials", {
       email,
       password,
-      redirectTo: `/subscribe?plan=${selectedPlan}`,
+      redirectTo: "/app",
     });
   } catch (error) {
     if (error instanceof AuthError) {

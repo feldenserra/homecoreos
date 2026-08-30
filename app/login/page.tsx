@@ -1,16 +1,12 @@
 import { Text, Title } from "@mantine/core";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
-import { hasUnlimitedAccess } from "../../lib/revenuecat/server";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
   const session = await auth();
   if (session?.user?.id) {
-    if (await hasUnlimitedAccess(session.user.id)) {
-      redirect("/app");
-    }
-    redirect("/subscribe");
+    redirect("/app");
   }
 
   return (

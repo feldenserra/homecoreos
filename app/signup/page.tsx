@@ -1,16 +1,12 @@
 import { Text, Title } from "@mantine/core";
 import { redirect } from "next/navigation";
 import { auth } from "../../auth";
-import { hasUnlimitedAccess } from "../../lib/revenuecat/server";
 import { SignupForm } from "./signup-form";
 
 export default async function SignupPage() {
   const session = await auth();
   if (session?.user?.id) {
-    if (await hasUnlimitedAccess(session.user.id)) {
-      redirect("/app");
-    }
-    redirect("/subscribe");
+    redirect("/app");
   }
 
   return (
@@ -20,7 +16,7 @@ export default async function SignupPage() {
           HomeCore
         </Title>
         <Text c="dimmed" size="sm" mb="xl">
-          Subscribe to access everything for the house.
+          Everything for the house, in one place.
         </Text>
         <SignupForm />
       </div>

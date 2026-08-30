@@ -19,7 +19,6 @@
     "@auth/drizzle-adapter": "^1.11.3",
     "@mantine/core": "9.4.2",
     "@mantine/hooks": "9.4.2",
-    "@revenuecat/purchases-js": "^1.55.0",
     "@tabler/icons-react": "^3.46.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.2",

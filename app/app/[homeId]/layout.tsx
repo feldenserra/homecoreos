@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../auth";
 import { HomeShell } from "../../../components/home/home-shell";
 import { isValidHomeId, normalizeHomeId } from "../../../lib/home-id";
-import { requireUnlimitedAccess } from "../../../lib/revenuecat/server";
 import { getHomeForMember } from "../actions";
 
 export default async function HomeLayout({
@@ -16,7 +15,6 @@ export default async function HomeLayout({
   if (!session?.user?.id) {
     redirect("/login");
   }
-  await requireUnlimitedAccess(session.user.id);
 
   const { homeId: raw } = await params;
   const homeId = normalizeHomeId(raw);

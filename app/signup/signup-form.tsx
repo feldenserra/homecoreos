@@ -11,13 +11,10 @@ import {
   Title,
 } from "@mantine/core";
 import Link from "next/link";
-import { PlanRadios } from "../../components/billing/plan-radios";
-import type { SubscriptionPlan } from "../../lib/revenuecat/constants";
-import { registerWithPlan } from "./actions";
+import { registerWithCredentials } from "./actions";
 
 export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
-  const [plan, setPlan] = useState<SubscriptionPlan>("yearly");
 
   return (
     <div className="login-form">
@@ -27,21 +24,29 @@ export function SignupForm() {
             Create account
           </Title>
           <Text c="dimmed" size="sm" mt={4}>
-            Choose a plan, then pay to unlock HomeCore.
+            Name, email, and password to get started.
           </Text>
         </div>
 
         <form
           action={async (formData) => {
             setError(null);
-            formData.set("plan", plan);
-            const result = await registerWithPlan(formData);
+            const result = await registerWithCredentials(formData);
             if (result?.error) {
               setError(result.error);
             }
           }}
         >
           <Stack gap="sm">
+            <TextInput
+              name="name"
+              label="Name"
+              placeholder="Alex Serra"
+              autoComplete="name"
+              required
+              minLength={2}
+              maxLength={64}
+            />
             <TextInput
               name="email"
               type="email"
@@ -61,13 +66,12 @@ export function SignupForm() {
               placeholder="Repeat your password"
               required
             />
-            <PlanRadios value={plan} onChange={setPlan} />
             {error ? (
               <Text c="red" size="sm">
                 {error}
               </Text>
             ) : null}
-            <Button type="submit">Continue to payment</Button>
+            <Button type="submit">Create account</Button>
           </Stack>
         </form>
 

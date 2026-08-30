@@ -48,7 +48,11 @@ const STEPS = [
   },
 ] as const;
 
-export function LandingPage() {
+export function LandingPage({
+  allowLogins = true,
+}: {
+  allowLogins?: boolean;
+}) {
   return (
     <div className="landing" id="top">
       <header className="landing-nav">
@@ -66,9 +70,11 @@ export function LandingPage() {
             <IconBrandGithub size={18} stroke={1.7} />
             GitHub
           </a>
-          <Button component="a" href="/login" size="sm">
-            Log in
-          </Button>
+          {allowLogins ? (
+            <Button component="a" href="/login" size="sm">
+              Log in
+            </Button>
+          ) : null}
         </div>
       </header>
 

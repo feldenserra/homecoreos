@@ -13,7 +13,6 @@ import {
   normalizeSystemPrompt,
 } from "../../../lib/chat-prompt";
 import { isValidHomeId, normalizeHomeId } from "../../../lib/home-id";
-import { hasUnlimitedAccess } from "../../../lib/revenuecat/server";
 import { AI_KEY_SOURCES, type AiKeySource } from "../../../lib/types";
 import { withRls } from "../../../src/db/rls";
 import {
@@ -111,12 +110,6 @@ export async function POST(req: Request) {
   const userId = session?.user?.id;
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!(await hasUnlimitedAccess(userId))) {
-    return NextResponse.json(
-      { error: "Subscription required" },
-      { status: 403 },
-    );
   }
 
   let body: ChatBody;

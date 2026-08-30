@@ -23,7 +23,6 @@ services:
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
       AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
-      RUNNING_LOCAL: ${RUNNING_LOCAL:-true}
       NODE_ENV: development
     command: yarn dev --hostname 0.0.0.0 --port 3000
     working_dir: /app

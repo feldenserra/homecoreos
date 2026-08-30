@@ -26,8 +26,6 @@ services:
     build:
       context: .
       target: runner
-      args:
-        RUNNING_LOCAL: ${RUNNING_LOCAL:-true}
     container_name: app_web
     ports:
       - "3000:3000"
@@ -41,7 +39,6 @@ services:
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
       AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
-      RUNNING_LOCAL: ${RUNNING_LOCAL:-true}
       HOSTNAME: 0.0.0.0
       PORT: 3000
     extra_hosts:

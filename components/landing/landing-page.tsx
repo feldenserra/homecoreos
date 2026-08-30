@@ -5,7 +5,6 @@ import {
   IconLayoutKanban,
   IconMessage,
 } from "@tabler/icons-react";
-import Link from "next/link";
 import { HouseMark } from "../house-mark";
 
 const GITHUB_URL = "https://github.com/feldenserra/homecoreos";
@@ -49,7 +48,7 @@ const STEPS = [
   },
 ] as const;
 
-export function LandingPage({ showLogin }: { showLogin: boolean }) {
+export function LandingPage() {
   return (
     <div className="landing" id="top">
       <header className="landing-nav">
@@ -67,11 +66,9 @@ export function LandingPage({ showLogin }: { showLogin: boolean }) {
             <IconBrandGithub size={18} stroke={1.7} />
             GitHub
           </a>
-          {showLogin ? (
-            <Button component={Link} href="/login" size="sm">
-              Log in
-            </Button>
-          ) : null}
+          <Button component="a" href="/login" size="sm">
+            Log in
+          </Button>
         </div>
       </header>
 

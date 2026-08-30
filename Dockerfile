@@ -16,9 +16,6 @@ COPY . .
 ENV DATABASE_URL=postgres://postgres:password@db:5432/app_local
 ENV AUTH_SECRET=build-time-placeholder
 ENV AUTH_URL=http://localhost:3000
-# Edge middleware inlines this at build. Default public landing.
-ARG RUNNING_LOCAL=false
-ENV RUNNING_LOCAL=$RUNNING_LOCAL
 RUN yarn build
 
 FROM base AS runner

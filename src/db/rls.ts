@@ -15,7 +15,7 @@ export type RlsTx = PgTransaction<
 
 /**
  * Run queries in a transaction with RLS context set to the given user id.
- * Must be used for all home / membership / task access via app_runtime.
+ * Must be used for all home / membership / task access (RLS enforced).
  */
 export async function withRls<T>(
   userId: string,

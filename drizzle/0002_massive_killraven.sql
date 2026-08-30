@@ -25,7 +25,11 @@ CREATE INDEX "chat_message_conversation_created_idx" ON "chat_message" USING btr
 --> statement-breakpoint
 ALTER TABLE "chat_conversation" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+ALTER TABLE "chat_conversation" FORCE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "chat_message" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "chat_message" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
 CREATE POLICY chat_conversation_select ON "chat_conversation" FOR SELECT
   USING (
@@ -90,7 +94,3 @@ CREATE POLICY chat_message_delete ON "chat_message" FOR DELETE
       WHERE m."homeId" = "chat_message"."homeId" AND m."userId" = app_current_user_id()
     )
   );
---> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON "chat_conversation" TO app_runtime;
---> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON "chat_message" TO app_runtime;

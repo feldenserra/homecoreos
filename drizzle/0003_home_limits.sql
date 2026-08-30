@@ -33,12 +33,6 @@ AS $$
   );
 $$;
 --> statement-breakpoint
-GRANT EXECUTE ON FUNCTION user_created_home_count() TO app_runtime;
---> statement-breakpoint
-GRANT EXECUTE ON FUNCTION user_joined_home_count() TO app_runtime;
---> statement-breakpoint
-GRANT EXECUTE ON FUNCTION home_created_by_current_user(text) TO app_runtime;
---> statement-breakpoint
 DROP POLICY home_insert ON "home";
 --> statement-breakpoint
 CREATE POLICY home_insert ON "home" FOR INSERT

@@ -37,22 +37,6 @@ CREATE OR REPLACE FUNCTION app_current_user_id() RETURNS text AS $$
   SELECT nullif(current_setting('app.user_id', true), '');
 $$ LANGUAGE sql STABLE;
 --> statement-breakpoint
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_runtime') THEN
-    CREATE ROLE app_runtime LOGIN PASSWORD 'password';
-  END IF;
-END
-$$;
---> statement-breakpoint
-DO $$
-BEGIN
-  EXECUTE format('GRANT CONNECT ON DATABASE %I TO app_runtime', current_database());
-END
-$$;
---> statement-breakpoint
-GRANT USAGE ON SCHEMA public TO app_runtime;
---> statement-breakpoint
 CREATE OR REPLACE FUNCTION home_exists(p_id text)
 RETURNS boolean
 LANGUAGE sql
@@ -63,21 +47,17 @@ AS $$
   SELECT EXISTS (SELECT 1 FROM home WHERE id = p_id);
 $$;
 --> statement-breakpoint
-GRANT EXECUTE ON FUNCTION home_exists(text) TO app_runtime;
---> statement-breakpoint
-GRANT EXECUTE ON FUNCTION app_current_user_id() TO app_runtime;
---> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
---> statement-breakpoint
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
---> statement-breakpoint
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_runtime;
---> statement-breakpoint
 ALTER TABLE "home" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "home" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE "home_member" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+ALTER TABLE "home_member" FORCE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "task" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "task" FORCE ROW LEVEL SECURITY;
 --> statement-breakpoint
 CREATE POLICY home_select ON "home" FOR SELECT
   USING (

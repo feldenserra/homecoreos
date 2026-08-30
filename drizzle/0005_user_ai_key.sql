@@ -15,6 +15,8 @@ CREATE UNIQUE INDEX "user_ai_key_user_source_idx" ON "user_ai_key" USING btree (
 --> statement-breakpoint
 ALTER TABLE "user_ai_key" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+ALTER TABLE "user_ai_key" FORCE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE POLICY user_ai_key_select ON "user_ai_key" FOR SELECT
   USING ("userId" = app_current_user_id());
 --> statement-breakpoint

@@ -372,51 +372,53 @@ export function ChatApp({
       ) : null}
 
       <section className="chat-main">
-        <div className="chat-main-toolbar">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            hiddenFrom="sm"
-            aria-label="Chats"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <IconMessages size={20} stroke={1.7} />
-          </ActionIcon>
-          <Text size="sm" fw={600} lineClamp={1} style={{ flex: 1 }}>
-            {activeConversationId ? activeTitle : "New chat"}
-          </Text>
-          {chatLocked ? (
-            <UnstyledButton
-              className="chat-prompt-toggle"
-              onClick={() => setPromptOpen((open) => !open)}
+        <div className="chat-main-header">
+          <div className="chat-main-toolbar">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              hiddenFrom="sm"
+              aria-label="Chats"
+              onClick={() => setSidebarOpen(true)}
             >
-              <Text size="sm" c="dimmed">
-                {promptOpen ? "Hide" : "More"}
-              </Text>
-            </UnstyledButton>
+              <IconMessages size={20} stroke={1.7} />
+            </ActionIcon>
+            <Text size="sm" fw={600} lineClamp={1} style={{ flex: 1 }}>
+              {activeConversationId ? activeTitle : "New chat"}
+            </Text>
+            {chatLocked ? (
+              <UnstyledButton
+                className="chat-prompt-toggle"
+                onClick={() => setPromptOpen((open) => !open)}
+              >
+                <Text size="sm" c="dimmed">
+                  {promptOpen ? "Hide" : "More"}
+                </Text>
+              </UnstyledButton>
+            ) : null}
+          </div>
+
+          {chatLocked ? (
+            <Collapse expanded={promptOpen}>
+              <div className="chat-prompt-recall">
+                <Text size="xs" fw={600} c="dimmed" mb={4}>
+                  AI
+                </Text>
+                <Text size="sm" c="dimmed">
+                  {aiSource
+                    ? `${AI_KEY_SOURCE_LABELS[aiSource]}${aiModel ? ` · ${aiModel}` : ""}`
+                    : "Not set"}
+                </Text>
+                <Text size="xs" fw={600} c="dimmed" mt="sm" mb={4}>
+                  Instructions
+                </Text>
+                <Text size="sm" c="dimmed" style={{ whiteSpace: "pre-wrap" }}>
+                  {systemPrompt}
+                </Text>
+              </div>
+            </Collapse>
           ) : null}
         </div>
-
-        {chatLocked ? (
-          <Collapse expanded={promptOpen}>
-            <div className="chat-prompt-recall">
-              <Text size="xs" fw={600} c="dimmed" mb={4}>
-                AI
-              </Text>
-              <Text size="sm" c="dimmed">
-                {aiSource
-                  ? `${AI_KEY_SOURCE_LABELS[aiSource]}${aiModel ? ` · ${aiModel}` : ""}`
-                  : "Not set"}
-              </Text>
-              <Text size="xs" fw={600} c="dimmed" mt="sm" mb={4}>
-                Instructions
-              </Text>
-              <Text size="sm" c="dimmed" style={{ whiteSpace: "pre-wrap" }}>
-                {systemPrompt}
-              </Text>
-            </div>
-          </Collapse>
-        ) : null}
 
         <div className="chat-messages">
           {messages.length === 0 ? (

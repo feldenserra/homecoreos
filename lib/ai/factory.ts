@@ -1,4 +1,5 @@
 import type { AiKeySource } from "../types";
+import { createCloudflareProvider } from "./providers/cloudflare";
 import { createOpenAiCompatibleProvider } from "./providers/openai-compatible";
 import type { AiProvider } from "./types";
 
@@ -40,10 +41,9 @@ export function createAiProviderFromConfig(config: AiProviderConfig): AiProvider
     throw new Error("Cloudflare account ID and API key are required.");
   }
 
-  return createOpenAiCompatibleProvider({
-    id: "cloudflare",
+  return createCloudflareProvider({
+    accountId,
     apiKey,
-    baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
     model,
   });
 }

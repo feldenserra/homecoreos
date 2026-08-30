@@ -67,7 +67,8 @@ body {
 /* Home shell */
 
 .home-shell {
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -847,19 +848,28 @@ body {
   flex-direction: column;
 }
 
+.chat-main-header {
+  flex-shrink: 0;
+}
+
 .chat-main-toolbar {
+  flex-shrink: 0;
   padding: 8px var(--hc-gutter);
   border-bottom: 1px solid var(--hc-line);
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 52px;
+  background: color-mix(in srgb, var(--hc-paper) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .chat-messages {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-empty {

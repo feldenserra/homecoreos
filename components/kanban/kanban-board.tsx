@@ -1,41 +1,59 @@
-"use client";
-
-import { Box, Button, Group, Stack, Text, TextInput } from "@mantine/core";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { createTask, deleteTask, moveTask } from "../../app/app/actions";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { Button, Modal, Portal, TextInput } from "react-native-paper";
+import {
+  createTask as createTaskRequest,
+  deleteTask as deleteTaskRequest,
+  moveTask as moveTaskRequest,
+  type Task,
+} from "../../lib/api/tasks";
 import { TASK_STATUSES, type TaskStatus } from "../../lib/types";
+import {
+  colors,
+  displayTextStyle,
+  INPUT_FONT_SIZE,
+  radius,
+  shadowLift,
+  statusColors,
+  TOUCH_TARGET,
+} from "../../theme/tokens";
+import { ErrorText, MetaLabel } from "../ui";
 
-export type KanbanTask = {
-  id: string;
-  homeId: string;
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  position: number;
+/**
+ * The shared task board. Replaces components/kanban/kanban-board.tsx.
+ *
+ * What carried over:
+ *  - Four columns in TASK_STATUSES order, tasks ordered by `position`.
+ *  - A horizontal pager, one column per screen. The web version did this with
+ *    CSS scroll-snap below 48em; here it is a paging ScrollView, which is the
+ *    same interaction with native momentum.
+ *  - The 2x2 status picker, opened by tapping a card. The web version was an
+ *    absolutely-positioned popover clamped to the viewport with
+ *    getBoundingClientRect; on a phone a centred sheet is the same gesture
+ *    without the arithmetic, so the clamping code is gone rather than ported.
+ *  - Optimistic reorder, now with an explicit rollback. `startTransition` +
+ *    `router.refresh()` used to resync from the server on failure; there is no
+ *    server render to fall back on, so the previous state is captured and
+ *    restored.
+ */
+
+const COLUMN_LABELS: Record<TaskStatus, string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  stuck: "Stuck",
+  complete: "Complete",
 };
 
-const COLUMN_META: Record<TaskStatus, { label: string; accent: string }> = {
-  not_started: {
-    label: "Not started",
-    accent: "var(--hc-col-not-started)",
-  },
-  in_progress: {
-    label: "In progress",
-    accent: "var(--hc-col-in-progress)",
-  },
-  stuck: {
-    label: "Stuck",
-    accent: "var(--hc-col-stuck)",
-  },
-  complete: {
-    label: "Complete",
-    accent: "var(--hc-col-complete)",
-  },
-};
-
-/** Row-major 2x2: TL, TR, BL, BR — clockwise from top-left is NS, IP, stuck, complete. */
+/** Row-major 2x2: not started, in progress / complete, stuck. */
 const PICKER_CELLS: TaskStatus[] = [
   "not_started",
   "in_progress",
@@ -43,515 +61,517 @@ const PICKER_CELLS: TaskStatus[] = [
   "stuck",
 ];
 
-const PICKER_SIZE = 172;
-const ADD_POPOVER_WIDTH = 260;
-const ADD_POPOVER_HEIGHT = 180;
-const DELETE_CONFIRM_HEIGHT = 148;
-const PICKER_PAD = 12;
-
-function sortTasks(list: KanbanTask[]) {
-  return [...list].sort((a, b) => a.position - b.position);
-}
-
-function groupByStatus(tasks: KanbanTask[]) {
-  const map: Record<TaskStatus, KanbanTask[]> = {
+function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
+  const groups: Record<TaskStatus, Task[]> = {
     not_started: [],
     in_progress: [],
     stuck: [],
     complete: [],
   };
+
   for (const task of tasks) {
-    map[task.status].push(task);
+    if (task.status in groups) {
+      groups[task.status].push(task);
+    }
   }
   for (const status of TASK_STATUSES) {
-    map[status] = sortTasks(map[status]);
+    groups[status].sort((a, b) => a.position - b.position);
   }
-  return map;
+  return groups;
 }
 
-function clampPickerPos(rect: DOMRect, width: number, height = width) {
-  const left = Math.max(
-    PICKER_PAD,
-    Math.min(
-      rect.left + rect.width / 2 - width / 2,
-      window.innerWidth - width - PICKER_PAD,
-    ),
-  );
-  const top = Math.max(
-    PICKER_PAD,
-    Math.min(
-      rect.top + rect.height / 2 - height / 2,
-      window.innerHeight - height - PICKER_PAD,
-    ),
-  );
-  return { left, top };
-}
-
-function TaskCard({
-  task,
-  selected,
-  onOpen,
+export function KanbanBoard({
+  homeId,
+  tasks,
+  onTasksChange,
+  onRefresh,
 }: {
-  task: KanbanTask;
-  selected?: boolean;
-  onOpen: (task: KanbanTask, anchor: DOMRect) => void;
+  homeId: string;
+  tasks: Task[];
+  /** Applies an optimistic update; returning the previous list enables rollback. */
+  onTasksChange: (next: Task[]) => void;
+  onRefresh: () => Promise<void>;
 }) {
+  const { width } = useWindowDimensions();
+  const groups = useMemo(() => groupByStatus(tasks), [tasks]);
+
+  const [picked, setPicked] = useState<Task | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Column width: full-bleed pager on phones, three-ish columns on a wide web
+  // viewport where there is room for them.
+  const columnWidth = width >= 900 ? 320 : width - 32;
+
+  const move = useCallback(
+    async (task: Task, status: TaskStatus) => {
+      setPicked(null);
+      if (task.status === status) {
+        return;
+      }
+
+      // Captured for rollback: the optimistic update below is applied before the
+      // request, and there is no server render to fall back to on failure.
+      const previous = tasks;
+      const targetMax = previous
+        .filter((candidate) => candidate.status === status)
+        .reduce((max, candidate) => Math.max(max, candidate.position), -1);
+      const position = targetMax + 1;
+
+      setError(null);
+      setBusyTaskId(task.id);
+      onTasksChange(
+        previous.map((candidate) =>
+          candidate.id === task.id
+            ? { ...candidate, status, position }
+            : candidate,
+        ),
+      );
+
+      try {
+        await moveTaskRequest({ homeId, taskId: task.id, status, position });
+      } catch (err) {
+        onTasksChange(previous);
+        setError(err instanceof Error ? err.message : "Could not move task.");
+      } finally {
+        setBusyTaskId(null);
+      }
+    },
+    [homeId, onTasksChange, tasks],
+  );
+
+  const remove = useCallback(
+    async (task: Task) => {
+      setConfirmDelete(null);
+      const previous = tasks;
+
+      setError(null);
+      setBusyTaskId(task.id);
+      onTasksChange(previous.filter((candidate) => candidate.id !== task.id));
+
+      try {
+        await deleteTaskRequest({ homeId, taskId: task.id });
+      } catch (err) {
+        onTasksChange(previous);
+        setError(err instanceof Error ? err.message : "Could not delete task.");
+      } finally {
+        setBusyTaskId(null);
+      }
+    },
+    [homeId, onTasksChange, tasks],
+  );
+
+  const add = useCallback(
+    async (status: TaskStatus, title: string) => {
+      setError(null);
+      try {
+        // create_task computes max(position) + 1 server-side, so there is
+        // nothing to guess and nothing to reconcile.
+        await createTaskRequest({ homeId, title, status });
+        await onRefresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not add task.");
+      }
+    },
+    [homeId, onRefresh],
+  );
+
   return (
-    <button
-      type="button"
-      className={`task-card${selected ? " task-card--selected" : ""}`}
-      aria-haspopup="dialog"
-      aria-expanded={selected}
-      onClick={(event) => {
-        onOpen(task, event.currentTarget.getBoundingClientRect());
-      }}
-    >
-      <Text component="span" fw={550} size="sm" lh={1.35}>
-        {task.title}
-      </Text>
-    </button>
+    <View style={styles.root}>
+      <ErrorText>{error}</ErrorText>
+
+      <ScrollView
+        horizontal
+        pagingEnabled={columnWidth >= width - 32}
+        snapToInterval={columnWidth + 12}
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.columns}
+      >
+        {TASK_STATUSES.map((status) => (
+          <Column
+            key={status}
+            status={status}
+            width={columnWidth}
+            tasks={groups[status]}
+            busyTaskId={busyTaskId}
+            onOpenTask={setPicked}
+            onAdd={add}
+          />
+        ))}
+      </ScrollView>
+
+      <Portal>
+        <Modal
+          visible={picked !== null}
+          onDismiss={() => setPicked(null)}
+          contentContainerStyle={styles.sheet}
+        >
+          {picked ? (
+            <>
+              <Text style={styles.sheetTitle} numberOfLines={3}>
+                {picked.title}
+              </Text>
+              <MetaLabel>Move to</MetaLabel>
+
+              <View style={styles.pickerGrid}>
+                {PICKER_CELLS.map((status) => (
+                  <Pressable
+                    key={status}
+                    accessibilityRole="button"
+                    onPress={() => void move(picked, status)}
+                    style={({ pressed }) => [
+                      styles.pickerCell,
+                      { borderColor: statusColors[status] },
+                      picked.status === status && styles.pickerCellCurrent,
+                      pressed && styles.pickerCellPressed,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.accentDot,
+                        { backgroundColor: statusColors[status] },
+                      ]}
+                    />
+                    <Text style={styles.pickerLabel}>
+                      {COLUMN_LABELS[status]}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Button
+                mode="text"
+                textColor="#b3261e"
+                icon={() => (
+                  <MaterialCommunityIcons
+                    name="trash-can-outline"
+                    size={18}
+                    color="#b3261e"
+                  />
+                )}
+                onPress={() => {
+                  const target = picked;
+                  setPicked(null);
+                  setConfirmDelete(target);
+                }}
+              >
+                Delete task
+              </Button>
+            </>
+          ) : null}
+        </Modal>
+
+        <Modal
+          visible={confirmDelete !== null}
+          onDismiss={() => setConfirmDelete(null)}
+          contentContainerStyle={styles.sheet}
+        >
+          {confirmDelete ? (
+            <>
+              <Text style={styles.sheetTitle}>Delete this task?</Text>
+              <Text style={styles.sheetBody} numberOfLines={3}>
+                {confirmDelete.title}
+              </Text>
+              <View style={styles.confirmRow}>
+                <Button
+                  mode="text"
+                  textColor={colors.muted}
+                  onPress={() => setConfirmDelete(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  mode="contained"
+                  buttonColor="#b3261e"
+                  onPress={() => void remove(confirmDelete)}
+                >
+                  Delete
+                </Button>
+              </View>
+            </>
+          ) : null}
+        </Modal>
+      </Portal>
+    </View>
   );
 }
 
 function Column({
   status,
+  width,
   tasks,
-  movingTaskId,
-  addingStatus,
-  onOpenPicker,
-  onOpenAdd,
+  busyTaskId,
+  onOpenTask,
+  onAdd,
 }: {
   status: TaskStatus;
-  tasks: KanbanTask[];
-  movingTaskId: string | null;
-  addingStatus: TaskStatus | null;
-  onOpenPicker: (task: KanbanTask, anchor: DOMRect) => void;
-  onOpenAdd: (status: TaskStatus, anchor: DOMRect) => void;
+  width: number;
+  tasks: Task[];
+  busyTaskId: string | null;
+  onOpenTask: (task: Task) => void;
+  onAdd: (status: TaskStatus, title: string) => Promise<void>;
 }) {
-  const meta = COLUMN_META[status];
-  const addSelected = addingStatus === status;
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const [pending, setPending] = useState(false);
+
+  const submit = async () => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setPending(true);
+    await onAdd(status, trimmed);
+    setPending(false);
+    setTitle("");
+    setAdding(false);
+  };
 
   return (
-    <Box
-      className={`kanban-column${addSelected ? " kanban-column--adding" : ""}`}
-      style={{ ["--col-accent" as string]: meta.accent }}
-    >
-      <Group
-        className="kanban-column-header"
-        justify="space-between"
-        mb="sm"
-        wrap="nowrap"
-      >
-        <Text fw={600} size="sm">
-          {meta.label}
-        </Text>
-        <span className={`status-badge status-badge--${status}`}>
-          {tasks.length}
-        </span>
-      </Group>
-      <div className="task-column-body">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            selected={movingTaskId === task.id}
-            onOpen={onOpenPicker}
-          />
-        ))}
-      </div>
-      <button
-        type="button"
-        className="kanban-column__plus"
-        aria-label={`Add task to ${meta.label}`}
-        aria-haspopup="dialog"
-        aria-expanded={addSelected}
-        onClick={(event) => {
-          onOpenAdd(status, event.currentTarget.getBoundingClientRect());
-        }}
-      >
-        <IconPlus size={16} stroke={2} />
-      </button>
-    </Box>
-  );
-}
-
-export function KanbanBoard({
-  homeId,
-  initialTasks,
-}: {
-  homeId: string;
-  initialTasks: KanbanTask[];
-}) {
-  const router = useRouter();
-  const boardRef = useRef<HTMLDivElement | null>(null);
-  const pickerRef = useRef<HTMLDivElement | null>(null);
-  const addPickerRef = useRef<HTMLDivElement | null>(null);
-  const [tasks, setTasks] = useState(initialTasks);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const [activeCol, setActiveCol] = useState(0);
-  const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
-  const [addingStatus, setAddingStatus] = useState<TaskStatus | null>(null);
-  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
-  const [addPickerPos, setAddPickerPos] = useState({ top: 0, left: 0 });
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const pickerAnchorRef = useRef<DOMRect | null>(null);
-
-  useEffect(() => {
-    setTasks(initialTasks);
-  }, [initialTasks]);
-
-  const columns = useMemo(() => groupByStatus(tasks), [tasks]);
-  const movingTask = tasks.find((t) => t.id === movingTaskId) ?? null;
-  const overlayOpen = Boolean(movingTask || addingStatus);
-
-  useEffect(() => {
-    if (!overlayOpen) {
-      return;
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setMovingTaskId(null);
-        setConfirmingDelete(false);
-        setAddingStatus(null);
-        setAddError(null);
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [overlayOpen]);
-
-  useEffect(() => {
-    if (!movingTaskId || confirmingDelete) {
-      return;
-    }
-    const current = pickerRef.current?.querySelector<HTMLButtonElement>(
-      ".task-move-cell--current",
-    );
-    current?.focus();
-  }, [movingTaskId, confirmingDelete]);
-
-  useEffect(() => {
-    if (!confirmingDelete) {
-      return;
-    }
-    pickerRef.current
-      ?.querySelector<HTMLButtonElement>(".task-move-confirm-cancel")
-      ?.focus();
-  }, [confirmingDelete]);
-
-  useEffect(() => {
-    if (!addingStatus) {
-      return;
-    }
-    const input = addPickerRef.current?.querySelector<HTMLInputElement>(
-      "input[name='title']",
-    );
-    input?.focus();
-  }, [addingStatus]);
-
-  function onBoardScroll() {
-    const el = boardRef.current;
-    if (!el) {
-      return;
-    }
-    const first = el.children[0] as HTMLElement | undefined;
-    if (!first) {
-      return;
-    }
-    const colWidth = first.offsetWidth + 12;
-    setActiveCol(
-      Math.min(
-        TASK_STATUSES.length - 1,
-        Math.max(0, Math.round(el.scrollLeft / colWidth)),
-      ),
-    );
-  }
-
-  function scrollToColumn(index: number) {
-    const el = boardRef.current;
-    if (!el) {
-      return;
-    }
-    const col = el.children[index] as HTMLElement | undefined;
-    col?.scrollIntoView({
-      behavior: "smooth",
-      inline: "start",
-      block: "nearest",
-    });
-  }
-
-  function closePicker() {
-    setMovingTaskId(null);
-    setConfirmingDelete(false);
-  }
-
-  function closeAddPicker() {
-    setAddingStatus(null);
-    setAddError(null);
-  }
-
-  function closeOverlay() {
-    closePicker();
-    closeAddPicker();
-  }
-
-  function onOpenPicker(task: KanbanTask, anchor: DOMRect) {
-    if (movingTaskId === task.id) {
-      closePicker();
-      return;
-    }
-    closeAddPicker();
-    pickerAnchorRef.current = anchor;
-    setConfirmingDelete(false);
-    setPickerPos(clampPickerPos(anchor, PICKER_SIZE));
-    setMovingTaskId(task.id);
-  }
-
-  function onOpenAdd(status: TaskStatus, anchor: DOMRect) {
-    if (addingStatus === status) {
-      closeAddPicker();
-      return;
-    }
-    closePicker();
-    setAddError(null);
-    setAddPickerPos(
-      clampPickerPos(anchor, ADD_POPOVER_WIDTH, ADD_POPOVER_HEIGHT),
-    );
-    setAddingStatus(status);
-  }
-
-  function persistMove(task: KanbanTask, nextStatus: TaskStatus) {
-    if (task.status === nextStatus) {
-      closePicker();
-      return;
-    }
-
-    const position = tasks.filter((t) => t.status === nextStatus).length;
-    const sourceStatus = task.status;
-
-    setTasks((prev) => {
-      const without = prev.filter((t) => t.id !== task.id);
-      const dest = sortTasks(
-        without.filter((t) => t.status === nextStatus),
-      );
-      const moved: KanbanTask = {
-        ...task,
-        status: nextStatus,
-        position,
-      };
-      const reindexedDest = [...dest, moved].map((t, i) => ({
-        ...t,
-        position: i,
-      }));
-      const source = sortTasks(
-        without.filter((t) => t.status === sourceStatus),
-      ).map((t, i) => ({ ...t, position: i }));
-      const other = without.filter(
-        (t) => t.status !== nextStatus && t.status !== sourceStatus,
-      );
-      return [...other, ...source, ...reindexedDest];
-    });
-
-    closePicker();
-    startTransition(async () => {
-      await moveTask({
-        homeId,
-        taskId: task.id,
-        status: nextStatus,
-        position,
-      });
-      router.refresh();
-    });
-    scrollToColumn(TASK_STATUSES.indexOf(nextStatus));
-  }
-
-  function startDeleteConfirm() {
-    const anchor = pickerAnchorRef.current;
-    if (anchor) {
-      setPickerPos(
-        clampPickerPos(anchor, ADD_POPOVER_WIDTH, DELETE_CONFIRM_HEIGHT),
-      );
-    }
-    setConfirmingDelete(true);
-  }
-
-  function cancelDeleteConfirm() {
-    const anchor = pickerAnchorRef.current;
-    if (anchor) {
-      setPickerPos(clampPickerPos(anchor, PICKER_SIZE));
-    }
-    setConfirmingDelete(false);
-  }
-
-  function persistDelete(task: KanbanTask) {
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
-    closePicker();
-    startTransition(async () => {
-      await deleteTask({
-        homeId,
-        taskId: task.id,
-      });
-      router.refresh();
-    });
-  }
-
-  return (
-    <Box className="kanban-page">
-      <div className="kanban-pager" role="tablist" aria-label="Task columns">
-        {TASK_STATUSES.map((status, index) => (
-          <button
-            key={status}
-            type="button"
-            role="tab"
-            aria-selected={activeCol === index}
-            className={`kanban-pager-chip${activeCol === index ? " kanban-pager-chip--active" : ""}`}
-            style={{ ["--col-accent" as string]: COLUMN_META[status].accent }}
-            onClick={() => scrollToColumn(index)}
-          >
-            <span className="kanban-pager-dot" />
-            {COLUMN_META[status].label}
-          </button>
-        ))}
-      </div>
-
-      <div ref={boardRef} className="kanban-board" onScroll={onBoardScroll}>
-        {TASK_STATUSES.map((status) => (
-          <Column
-            key={status}
-            status={status}
-            tasks={columns[status]}
-            movingTaskId={movingTaskId}
-            addingStatus={addingStatus}
-            onOpenPicker={onOpenPicker}
-            onOpenAdd={onOpenAdd}
-          />
-        ))}
-      </div>
-
-      {overlayOpen ? (
-        <button
-          type="button"
-          className="task-move-catcher"
-          aria-label="Dismiss"
-          onClick={closeOverlay}
+    <View style={[styles.column, { width }]}>
+      <View style={styles.columnHeader}>
+        <View
+          style={[styles.accentBar, { backgroundColor: statusColors[status] }]}
         />
-      ) : null}
+        <Text style={styles.columnLabel}>{COLUMN_LABELS[status]}</Text>
+        <Text style={styles.columnCount}>{tasks.length}</Text>
+      </View>
 
-      {movingTask ? (
-        <div
-          ref={pickerRef}
-          className={`task-move-popover${confirmingDelete ? " task-move-popover--confirm" : ""}`}
-          role="dialog"
-          aria-label={
-            confirmingDelete
-              ? `Delete “${movingTask.title}”?`
-              : `Move “${movingTask.title}”`
-          }
-          style={{ top: pickerPos.top, left: pickerPos.left }}
-        >
-          {confirmingDelete ? (
-            <div className="task-move-confirm">
-              <Text fw={600} size="sm">
-                Delete this task?
-              </Text>
-              <p className="task-move-confirm-task">{movingTask.title}</p>
-              <div className="task-move-confirm-actions">
-                <button
-                  type="button"
-                  className="task-move-confirm-cancel"
-                  onClick={cancelDeleteConfirm}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="task-move-confirm-delete"
-                  onClick={() => persistDelete(movingTask)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="task-move-grid-wrap">
-              <div className="task-move-grid">
-                {PICKER_CELLS.map((status) => {
-                  const current = status === movingTask.status;
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      className={`task-move-cell task-move-cell--${status}${current ? " task-move-cell--current" : ""}`}
-                      aria-pressed={current}
-                      aria-label={COLUMN_META[status].label}
-                      onClick={() => persistMove(movingTask, status)}
-                    >
-                      {COLUMN_META[status].label}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                className="task-move-delete"
-                aria-label={`Delete “${movingTask.title}”`}
-                onClick={startDeleteConfirm}
-              >
-                <IconTrash size={16} stroke={1.7} />
-              </button>
-            </div>
-          )}
-        </div>
-      ) : null}
-
-      {addingStatus ? (
-        <div
-          ref={addPickerRef}
-          className="task-add-popover"
-          role="dialog"
-          aria-label={`Add task to ${COLUMN_META[addingStatus].label}`}
-          style={{ top: addPickerPos.top, left: addPickerPos.left }}
-        >
-          <form
-            action={(formData) => {
-              setAddError(null);
-              formData.set("status", addingStatus);
-              startTransition(async () => {
-                const result = await createTask(homeId, formData);
-                if (result && "error" in result) {
-                  setAddError(result.error);
-                  return;
-                }
-                closeAddPicker();
-                router.refresh();
-              });
-            }}
+      <ScrollView
+        style={styles.columnBody}
+        contentContainerStyle={styles.columnBodyContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {tasks.map((task) => (
+          <Pressable
+            key={task.id}
+            accessibilityRole="button"
+            accessibilityHint="Opens the move and delete options"
+            onPress={() => onOpenTask(task)}
+            disabled={busyTaskId === task.id}
+            style={({ pressed }) => [
+              styles.taskCard,
+              pressed && styles.taskCardPressed,
+              busyTaskId === task.id && styles.taskCardBusy,
+            ]}
           >
-            <Stack gap="sm">
-              <Text fw={600} size="sm">
-                New task
-              </Text>
-              <TextInput
-                name="title"
-                placeholder="What needs doing?"
-                required
-                maxLength={200}
-              />
-              {addError ? (
-                <Text size="sm" c="red">
-                  {addError}
-                </Text>
-              ) : null}
-              <Button type="submit" size="compact-sm" loading={pending}>
-                Add to {COLUMN_META[addingStatus].label}
+            <Text style={styles.taskTitle}>{task.title}</Text>
+            {busyTaskId === task.id ? (
+              <ActivityIndicator size="small" color={colors.muted} />
+            ) : null}
+          </Pressable>
+        ))}
+
+        {tasks.length === 0 && !adding ? (
+          <Text style={styles.emptyText}>Nothing here.</Text>
+        ) : null}
+
+        {adding ? (
+          <View style={styles.addForm}>
+            <TextInput
+              label="Task"
+              value={title}
+              onChangeText={setTitle}
+              mode="outlined"
+              dense
+              autoFocus
+              maxLength={200}
+              onSubmitEditing={submit}
+              returnKeyType="done"
+              style={styles.addInput}
+            />
+            <View style={styles.addActions}>
+              <Button
+                mode="text"
+                compact
+                textColor={colors.muted}
+                onPress={() => {
+                  setAdding(false);
+                  setTitle("");
+                }}
+              >
+                Cancel
               </Button>
-            </Stack>
-          </form>
-        </div>
-      ) : null}
-    </Box>
+              <Button
+                mode="contained"
+                compact
+                loading={pending}
+                disabled={pending || !title.trim()}
+                onPress={submit}
+              >
+                Add
+              </Button>
+            </View>
+          </View>
+        ) : (
+          <Button
+            mode="text"
+            compact
+            textColor={colors.muted}
+            style={styles.addTrigger}
+            icon={() => (
+              <MaterialCommunityIcons
+                name="plus"
+                size={18}
+                color={colors.muted}
+              />
+            )}
+            onPress={() => setAdding(true)}
+          >
+            Add task
+          </Button>
+        )}
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, gap: 8 },
+  columns: {
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  column: {
+    flex: 1,
+    gap: 10,
+  },
+  columnHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  accentBar: {
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+  },
+  columnLabel: {
+    ...displayTextStyle,
+    color: colors.ink,
+    fontSize: 16,
+    flex: 1,
+  },
+  columnCount: {
+    color: colors.muted,
+    fontSize: 13,
+    fontVariant: ["tabular-nums"],
+  },
+  columnBody: { flex: 1 },
+  columnBodyContent: {
+    gap: 8,
+    paddingBottom: 24,
+  },
+  taskCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    minHeight: TOUCH_TARGET,
+    padding: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  taskCardPressed: {
+    backgroundColor: colors.paper2,
+  },
+  taskCardBusy: {
+    opacity: 0.6,
+  },
+  taskTitle: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "600",
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 13,
+    paddingVertical: 4,
+  },
+  addTrigger: {
+    alignSelf: "flex-start",
+  },
+  addForm: {
+    gap: 8,
+    padding: 10,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  addInput: {
+    fontSize: INPUT_FONT_SIZE,
+    backgroundColor: colors.surface,
+  },
+  addActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  sheet: {
+    alignSelf: "center",
+    width: "88%",
+    maxWidth: 360,
+    gap: 12,
+    padding: 20,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    ...shadowLift,
+  },
+  sheetTitle: {
+    ...displayTextStyle,
+    color: colors.ink,
+    fontSize: 18,
+  },
+  sheetBody: {
+    color: colors.muted,
+    fontSize: 14,
+  },
+  pickerGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  pickerCell: {
+    // Two per row, accounting for the 8px gap.
+    width: "47%",
+    flexGrow: 1,
+    minHeight: 64,
+    gap: 6,
+    padding: 10,
+    justifyContent: "center",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    backgroundColor: colors.paper,
+  },
+  pickerCellCurrent: {
+    backgroundColor: colors.claySoft,
+  },
+  pickerCellPressed: {
+    opacity: 0.7,
+  },
+  accentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  pickerLabel: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  confirmRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+  },
+});

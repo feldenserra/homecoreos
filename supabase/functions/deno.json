@@ -1,0 +1,20 @@
+{
+  "_comment": "Deno config for the Edge Functions. Pinning supabase-js here rather than in each import means one place to bump it. Run `deno check supabase/functions/*/index.ts` to typecheck; the root tsconfig.json excludes this directory because these are Deno modules, not React Native ones.",
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.58.0"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["deno.window", "dom", "esnext"]
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "lineWidth": 80,
+    "semiColons": true,
+    "singleQuote": false
+  }
+}

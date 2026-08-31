@@ -1,8 +1,17 @@
-/** @type {import('jest').Config} */
+/**
+ * Covers the pure TypeScript in lib/ only — validation helpers and the home-code
+ * rules. Those have no React Native or Expo imports, so plain ts-jest is enough
+ * and we avoid pulling in jest-expo and a native module mock surface for three
+ * test files.
+ *
+ * Add jest-expo as a second project if component tests are ever introduced.
+ *
+ * @type {import('jest').Config}
+ */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>'],
+  roots: ['<rootDir>/lib'],
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   transform: {
@@ -16,10 +25,11 @@ module.exports = {
           esModuleInterop: true,
           isolatedModules: true,
           rootDir: '.',
-          ignoreDeprecations: '6.0',
         },
       },
     ],
   },
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
+  // supabase/functions is Deno: npm:/jsr: specifiers and Deno globals that
+  // node-based Jest cannot resolve.
+  testPathIgnorePatterns: ['/node_modules/', '/supabase/', '/.expo/'],
 };

@@ -1,0 +1,70 @@
+# Local Supabase stack. Replace project_id with your project ref before
+# `supabase link`.
+project_id = "homecoreos"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.migrations]
+schema_paths = []
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+# Deep link target for the native OAuth and email-confirmation round trips.
+site_url = "homecoreos://auth/callback"
+additional_redirect_urls = [
+  "homecoreos://auth/callback",
+  "homecoreos://",
+  "http://localhost:8081",
+  "http://localhost:8081/auth/callback",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Local only. In hosted, leave confirmations on — sign-up.tsx already handles
+# the "no session until confirmed" state.
+enable_confirmations = false
+
+[auth.external.github]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GITHUB_SECRET)"
+redirect_uri = ""
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+# All three read or write encrypted columns, so all three need the caller's
+# identity. verify_jwt keeps unauthenticated requests from ever reaching them.
+[functions.chat]
+verify_jwt = true
+
+[functions.conversations]
+verify_jwt = true
+
+[functions.ai-keys]
+verify_jwt = true

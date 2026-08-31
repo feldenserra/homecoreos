@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "HomeCore",
+    "slug": "homecoreos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "_comment_scheme": "Must match the scheme passed to AuthSession.makeRedirectUri in lib/auth-context.tsx, and be registered under Supabase > Auth > URL Configuration as homecoreos://auth/callback.",
+    "scheme": "homecoreos",
+    "backgroundColor": "#F3EDE3",
+    "splash": {
+      "backgroundColor": "#F3EDE3",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.homecoreos.app"
+    },
+    "android": {
+      "package": "com.homecoreos.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F3EDE3"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "_comment_favicon": "No favicon key: Expo's web favicon pipeline rasterises the source and rejects SVG, and public/favicon.svg is all this repo has. Add a PNG and point `web.favicon` at it to restore the branded tab icon.",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F3EDE3",
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

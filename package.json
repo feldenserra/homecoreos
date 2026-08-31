@@ -15,10 +15,15 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "echo 'Use `yarn supabase:push`. Applying with drizzle-kit desyncs supabase_migrations.schema_migrations.' && exit 1",
     "supabase:start": "supabase start",
+    "supabase:status": "supabase status",
+    "supabase:stop": "supabase stop",
     "supabase:push": "supabase db push",
     "supabase:reset": "supabase db reset",
-    "supabase:functions": "supabase functions serve",
+    "supabase:functions": "supabase functions serve --env-file .env",
     "supabase:deploy": "supabase functions deploy chat conversations ai-keys",
+    "compose:up": "docker compose up --build -d",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f",
     "types:generate": "supabase gen types typescript --local > lib/database.types.ts"
   },
   "dependencies": {
@@ -57,6 +62,7 @@
     "drizzle-orm": "^0.45.2",
     "jest": "^30.5.0",
     "oxlint": "^1.70.0",
+    "supabase": "^2.116.0",
     "ts-jest": "^29.4.12",
     "typescript": "~5.9.2"
   },

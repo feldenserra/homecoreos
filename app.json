@@ -22,7 +22,9 @@
       "adaptiveIcon": {
         "backgroundColor": "#F3EDE3"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "_comment_cleartext": "Required so a development build can reach the local Supabase API over http://. Cloud projects use https, so this does not weaken hosted traffic.",
+      "usesCleartextTraffic": true
     },
     "_comment_favicon": "No favicon key: Expo's web favicon pipeline rasterises the source and rejects SVG, and public/favicon.svg is all this repo has. Add a PNG and point `web.favicon` at it to restore the branded tab icon.",
     "web": {

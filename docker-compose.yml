@@ -1,0 +1,57 @@
+# Open-core stack: official self-hosted Supabase (vendored) + HomeCore Expo web.
+#
+#   cp docker/.env.example .env
+#   docker compose up --build
+#
+# Web UI:  http://localhost:3000
+# API:     http://localhost:8000
+# Studio:  via API gateway (see docker/supabase/README.md)
+
+include:
+  - path: docker/supabase/docker-compose.yml
+
+services:
+  functions:
+    volumes: !override
+      - ./docker/supabase/volumes/functions/main:/home/deno/functions/main:z
+      - ./supabase/functions/chat:/home/deno/functions/chat:z
+      - ./supabase/functions/conversations:/home/deno/functions/conversations:z
+      - ./supabase/functions/ai-keys:/home/deno/functions/ai-keys:z
+      - ./supabase/functions/_shared:/home/deno/functions/_shared:z
+      - ./supabase/functions/deno.json:/home/deno/functions/deno.json:z
+      - deno-cache:/root/.cache/deno
+    environment:
+      CHAT_CONTENT_ENCRYPTION_KEY: ${CHAT_CONTENT_ENCRYPTION_KEY}
+      AI_ALLOW_INSECURE_HOSTS: ${AI_ALLOW_INSECURE_HOSTS:-}
+
+  apply-schema:
+    container_name: homecore-apply-schema
+    image: supabase/postgres:17.6.1.136
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./supabase/migrations:/migrations:ro,z
+      - ./docker/apply-schema.sh:/apply-schema.sh:ro,z
+    entrypoint: ["/bin/bash", "/apply-schema.sh"]
+
+  web:
+    container_name: homecore-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        EXPO_PUBLIC_SUPABASE_URL: ${EXPO_PUBLIC_SUPABASE_URL}
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: ${EXPO_PUBLIC_SUPABASE_ANON_KEY}
+        EXPO_PUBLIC_ALLOW_LOGINS: ${EXPO_PUBLIC_ALLOW_LOGINS:-}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      api-gw:
+        condition: service_healthy
+      apply-schema:
+        condition: service_completed_successfully

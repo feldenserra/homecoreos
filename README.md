@@ -38,55 +38,77 @@ is what keeps the join code the only way into a household:
   owner membership row.
 - `join_home(p_code)` — code lookup and the five-join cap.
 
+## Ways to run
+
+| Mode | Who | Command | API URL |
+|---|---|---|---|
+| **Self-host (open-core)** | Anyone cloning the repo | `docker compose up --build` | `http://localhost:8000` |
+| **Cloud SaaS** | You hosting for customers | Hosted Supabase + deploy web/functions | `https://<ref>.supabase.co` |
+| **CLI local / native** | App developers | `yarn supabase:start` | `http://127.0.0.1:54321` |
+
+Do not run the open-core compose stack and `yarn supabase:start` at the same time
+(overlapping Docker resources). App code is unchanged between modes — only env
+values (and hosted secrets) change.
+
 ## Setup
 
 ```bash
 yarn install
-cp .env.example .env          # then fill in the values
 ```
 
-### Database
+### 1. Self-host (open-core) — Docker Compose
+
+Requires Docker Desktop (or another Compose v2 runtime). First start pulls a
+full Supabase image set; **8 GB RAM** is recommended.
+
+The root [`docker-compose.yml`](docker-compose.yml) includes a pinned official
+Supabase self-host tree under [`docker/supabase/`](docker/supabase/) (see
+`docker/supabase/VERSION`), serves edge functions from
+[`supabase/functions/`](supabase/functions/), and builds the Expo web app into
+nginx. After Postgres is healthy, the one-shot `apply-schema` service runs
+`psql` on the SQL files in [`supabase/migrations/`](supabase/migrations/) so a
+fresh stack gets the HomeCore schema; this is not `yarn supabase:push` and not
+Drizzle apply.
 
 ```bash
-supabase start                # local stack
-supabase db push              # applies supabase/migrations/ in order
-yarn types:generate           # regenerates lib/database.types.ts
+cp docker/.env.example .env
+docker compose up --build
+# or: yarn compose:up
 ```
 
-`supabase db push` is the only way migrations are applied. `drizzle-kit` is for
-authoring the schema and diffing it (`yarn db:generate`); applying with it
-directly would leave `supabase_migrations.schema_migrations` out of step with the
-real schema and force a `supabase migration repair`. `yarn db:push` is
-deliberately wired to fail and say so.
+Then open **http://localhost:3000**. The web image is built with
+`EXPO_PUBLIC_SUPABASE_URL=http://localhost:8000` and the matching anon key from
+`.env`, so the browser talks to the API gateway on the host.
 
-Point `DATABASE_URL_MIGRATE` at the Supabase **direct** connection
-(`db.<project-ref>.supabase.co:5432`), not the transaction pooler — pooled
-connections cannot run DDL reliably.
+Useful: `yarn compose:logs`, `yarn compose:down`.
 
-### Edge Function secrets
+Change every secret in `.env` before exposing the stack beyond localhost.
+
+### 2. Cloud SaaS (you host for paying users)
 
 ```bash
+cp .env.example .env
+# Set:
+#   EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+#   EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+#   DATABASE_URL_MIGRATE=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
+# Use the direct DB URL, not the transaction pooler.
+
+supabase link --project-ref <project-ref>
+yarn supabase:push
+
 supabase secrets set CHAT_CONTENT_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+yarn supabase:deploy
+yarn start   # or deploy the web export to your host of choice
 ```
 
-Never give any of these an `EXPO_PUBLIC_` prefix; that ships them in the app
-bundle. Only the Supabase URL and the publishable key belong there, and both are
-public by design.
+Never give edge secrets an `EXPO_PUBLIC_` prefix. If `CHAT_CONTENT_ENCRYPTION_KEY`
+is lost, encrypted columns are unreadable — back it up.
 
-If this key is lost, every encrypted column becomes unreadable. Back it up.
+Configure GitHub under Auth → Providers. Callback:
+`https://<project-ref>.supabase.co/auth/v1/callback`.
 
-### Running
-
-```bash
-supabase functions serve      # in one terminal
-yarn start                    # in another
-```
-
-**Use a development build, not Expo Go, for anything touching auth.** In Expo Go
-`makeRedirectUri` produces `exp://192.168.x.x:8081/...`, which cannot be
-registered as a stable Supabase redirect URL per developer.
-
-Register under Supabase → Auth → URL Configuration:
+Register under Auth → URL Configuration:
 
 ```
 homecoreos://auth/callback
@@ -94,8 +116,38 @@ homecoreos://**
 http://localhost:8081/**
 ```
 
-The GitHub OAuth app's own callback is only
-`https://<project-ref>.supabase.co/auth/v1/callback`.
+### 3. CLI local (native / Expo iteration)
+
+```bash
+cp .env.example .env
+yarn supabase:start           # prints URL + anon key → paste into .env
+openssl rand -base64 32       # → CHAT_CONTENT_ENCRYPTION_KEY in .env
+yarn supabase:push
+yarn types:generate
+
+yarn supabase:functions       # --env-file .env
+yarn start
+```
+
+`yarn supabase:push` is the only migration apply path for the CLI stack.
+`drizzle-kit` authors schema (`yarn db:generate`); applying with it desyncs
+`supabase_migrations.schema_migrations`. `yarn db:push` fails on purpose.
+
+**Device URL notes** (CLI stack on `:54321`):
+
+| Client | `EXPO_PUBLIC_SUPABASE_URL` |
+|---|---|
+| Web / iOS Simulator | `http://127.0.0.1:54321` |
+| Android emulator | `http://10.0.2.2:54321` |
+| Physical device | `http://<your-LAN-IP>:54321` |
+
+**Use a development build, not Expo Go, for anything touching auth.** In Expo Go
+`makeRedirectUri` produces `exp://192.168.x.x:8081/...`, which cannot be
+registered as a stable Supabase redirect URL per developer.
+
+GitHub OAuth against the CLI stack: set `SUPABASE_AUTH_GITHUB_CLIENT_ID` /
+`SUPABASE_AUTH_GITHUB_SECRET` in `.env`. Callback:
+`http://127.0.0.1:54321/auth/v1/callback`.
 
 ## Checks
 
@@ -120,12 +172,12 @@ Deno and are excluded from both the root `tsconfig.json` and Jest.
   `join_home` re-implements its own quota check, why `FORCE ROW LEVEL SECURITY`
   was dropped, and why widening `home_member_select` needs a SECURITY DEFINER
   helper rather than an inline `EXISTS`.
-- **A LAN Ollama no longer works.** The old deployment ran with Docker host
-  networking; an Edge Function cannot route to anyone's local network, and
-  private ranges are refused outright as an SSRF guard. Publicly reachable hosts
-  and tunnels are fine.
+- **A LAN Ollama no longer works.** An Edge Function cannot route to anyone's
+  local network; private ranges are refused as an SSRF guard. Public hosts and
+  tunnels are fine.
 - **There is no offline write queue.** `supabase-js` does not retry, so a failed
-  mutation surfaces its error and the caller re-reads. This matches the web app,
-  which had no client cache at all.
-- **Dark mode is deliberately absent**, matching the web app's forced light
-  scheme. Adding it is a design decision, not a port.
+  mutation surfaces its error and the caller re-reads.
+- **Dark mode is deliberately absent**, matching the forced light scheme.
+- **Upgrading the vendored Supabase Docker tree:** replace `docker/supabase/`
+  from a newer `self-hosted/v*` tag and bump `docker/supabase/VERSION`. Keep the
+  HomeCore `importMapPath` tweak in `volumes/functions/main/index.ts`.

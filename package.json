@@ -21,7 +21,7 @@
     "supabase:reset": "supabase db reset",
     "supabase:functions": "supabase functions serve --env-file .env",
     "supabase:deploy": "supabase functions deploy chat conversations ai-keys",
-    "compose:up": "docker compose up --build -d",
+    "compose:up": "node docker/ensure-env.mjs",
     "compose:down": "docker compose down",
     "compose:logs": "docker compose logs -f",
     "types:generate": "supabase gen types typescript --local > lib/database.types.ts"

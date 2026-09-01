@@ -1,7 +1,7 @@
 # Open-core stack: official self-hosted Supabase (vendored) + HomeCore Expo web.
 #
-#   cp docker/.env.example .env
-#   docker compose up --build
+#   yarn compose:up
+#   (or: cp docker/.env.example .env && docker compose up --build)
 #
 # Web UI:  http://localhost:3000
 # API:     http://localhost:8000

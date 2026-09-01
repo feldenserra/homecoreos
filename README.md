@@ -42,7 +42,7 @@ is what keeps the join code the only way into a household:
 
 | Mode | Who | Command | API URL |
 |---|---|---|---|
-| **Self-host (open-core)** | Anyone cloning the repo | `docker compose up --build` | `http://localhost:8000` |
+| **Self-host (open-core)** | Anyone cloning the repo | `yarn compose:up` | `http://localhost:8000` |
 | **Cloud SaaS** | You hosting for customers | Hosted Supabase + deploy web/functions | `https://<ref>.supabase.co` |
 | **CLI local / native** | App developers | `yarn supabase:start` | `http://127.0.0.1:54321` |
 
@@ -71,10 +71,16 @@ fresh stack gets the HomeCore schema; this is not `yarn supabase:push` and not
 Drizzle apply.
 
 ```bash
-cp docker/.env.example .env
-docker compose up --build
-# or: yarn compose:up
+yarn install          # once (provides yarn compose:up helper)
+yarn compose:up       # copies docker/.env.example → .env if needed, then starts
 ```
+
+Do **not** use the short root [`.env.example`](.env.example) for compose — that
+file is for CLI/cloud only. Compose needs [`docker/.env.example`](docker/.env.example)
+(the long Supabase self-host defaults). `yarn compose:up` refuses a mistaken
+short `.env` instead of starting a broken stack.
+
+Equivalent manual steps: `cp docker/.env.example .env && docker compose up --build`.
 
 Then open **http://localhost:3000**. The web image is built with
 `EXPO_PUBLIC_SUPABASE_URL=http://localhost:8000` and the matching anon key from

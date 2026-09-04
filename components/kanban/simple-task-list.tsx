@@ -37,15 +37,16 @@ export function SimpleTaskList({
   const [title, setTitle] = useState("");
   const [pendingAdd, setPendingAdd] = useState(false);
 
-  const ordered = useMemo(() => {
-    return tasks.toSorted((a, b) => {
-      const byCreated = a.createdAt.localeCompare(b.createdAt);
-      if (byCreated !== 0) {
-        return byCreated;
-      }
-      return a.id.localeCompare(b.id);
-    });
-  }, [tasks]);
+  const ordered = useMemo(
+    () =>
+      // Hermes has no Array.toSorted.
+      // eslint-disable-next-line unicorn/no-array-sort
+      [...tasks].sort((a, b) => {
+        const byCreated = a.createdAt.localeCompare(b.createdAt);
+        return byCreated !== 0 ? byCreated : a.id.localeCompare(b.id);
+      }),
+    [tasks],
+  );
 
   const toggle = useCallback(
     async (task: Task) => {

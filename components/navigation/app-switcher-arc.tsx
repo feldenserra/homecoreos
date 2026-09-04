@@ -238,6 +238,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: ITEM_SIZE,
     height: ITEM_SIZE,
+    left: ITEM_SIZE / 2,
+    top: ITEM_SIZE / 2,
     marginLeft: -ITEM_SIZE / 2,
     marginTop: -ITEM_SIZE / 2,
   },

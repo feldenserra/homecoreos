@@ -79,6 +79,14 @@ export default function HomeTabsLayout() {
           headerShown: false,
         }}
       />
+      <Tabs.Screen
+        name="meals"
+        options={{
+          tabBarLabel: "Meals",
+          // Nested Stack owns Recipes / Grocery / Plan headers.
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }

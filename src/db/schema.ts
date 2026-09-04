@@ -21,10 +21,13 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
+  date,
   foreignKey,
   index,
   integer,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -37,6 +40,7 @@ import type {
   AiKeySource,
   ChatMessageRole,
   HomeMemberRole,
+  MealType,
   TaskStatus,
 } from "../../lib/types";
 
@@ -44,12 +48,14 @@ export type {
   AiKeySource,
   ChatMessageRole,
   HomeMemberRole,
+  MealType,
   TaskStatus,
 } from "../../lib/types";
 export {
   AI_KEY_SOURCES,
   CHAT_MESSAGE_ROLES,
   HOME_MEMBER_ROLES,
+  MEAL_TYPES,
   TASK_STATUSES,
 } from "../../lib/types";
 
@@ -328,6 +334,176 @@ export const userAiKeys = pgTable(
     check(
       "user_ai_key_api_key_encrypted_check",
       sql`${table.apiKey} is null or ${table.apiKey} like 'enc:v1:%'`,
+    ),
+  ],
+);
+
+/**
+ * Home-scoped pantry ingredients. Nutrition is per serving; recipes multiply
+ * by quantity at read time and never store totals on the recipe row.
+ */
+export const ingredients = pgTable(
+  "ingredient",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    homeId: uuid("homeId")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    servingSizeGrams: numeric("servingSizeGrams"),
+    calories: numeric("calories"),
+    carbsGrams: numeric("carbsGrams"),
+    fatsGrams: numeric("fatsGrams"),
+    proteinGrams: numeric("proteinGrams"),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("ingredient_home_name_idx").on(table.homeId, table.name),
+    unique("ingredient_id_home_key").on(table.id, table.homeId),
+    check(
+      "ingredient_name_length_check",
+      sql`char_length(${table.name}) between 1 and 80`,
+    ),
+    check(
+      "ingredient_serving_size_check",
+      sql`${table.servingSizeGrams} is null or ${table.servingSizeGrams} >= 0`,
+    ),
+    check(
+      "ingredient_calories_check",
+      sql`${table.calories} is null or ${table.calories} >= 0`,
+    ),
+    check(
+      "ingredient_carbs_check",
+      sql`${table.carbsGrams} is null or ${table.carbsGrams} >= 0`,
+    ),
+    check(
+      "ingredient_fats_check",
+      sql`${table.fatsGrams} is null or ${table.fatsGrams} >= 0`,
+    ),
+    check(
+      "ingredient_protein_check",
+      sql`${table.proteinGrams} is null or ${table.proteinGrams} >= 0`,
+    ),
+  ],
+);
+
+export const recipes = pgTable(
+  "recipe",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    homeId: uuid("homeId")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("recipe_home_name_idx").on(table.homeId, table.name),
+    unique("recipe_id_home_key").on(table.id, table.homeId),
+    check(
+      "recipe_name_length_check",
+      sql`char_length(${table.name}) between 1 and 120`,
+    ),
+  ],
+);
+
+export const recipeIngredients = pgTable(
+  "recipe_ingredient",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recipeId: uuid("recipeId").notNull(),
+    ingredientId: uuid("ingredientId").notNull(),
+    /**
+     * Denormalized so RLS is a single join, kept honest by the composite FKs.
+     */
+    homeId: uuid("homeId").notNull(),
+    quantity: numeric("quantity").notNull().default("1"),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("recipe_ingredient_recipe_ingredient_key").on(
+      table.recipeId,
+      table.ingredientId,
+    ),
+    index("recipe_ingredient_recipe_idx").on(table.recipeId),
+    foreignKey({
+      name: "recipe_ingredient_recipe_home_fk",
+      columns: [table.recipeId, table.homeId],
+      foreignColumns: [recipes.id, recipes.homeId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "recipe_ingredient_ingredient_home_fk",
+      columns: [table.ingredientId, table.homeId],
+      foreignColumns: [ingredients.id, ingredients.homeId],
+    }).onDelete("cascade"),
+    check(
+      "recipe_ingredient_quantity_check",
+      sql`${table.quantity} > 0`,
+    ),
+  ],
+);
+
+export const groceryItems = pgTable(
+  "grocery_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    homeId: uuid("homeId")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    isCompleted: boolean("isCompleted").notNull().default(false),
+    /** Always the Monday of the target week, as a calendar date. */
+    weekStartDate: date("weekStartDate").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("grocery_item_home_week_completed_idx").on(
+      table.homeId,
+      table.weekStartDate,
+      table.isCompleted,
+    ),
+    check(
+      "grocery_item_name_length_check",
+      sql`char_length(${table.name}) between 1 and 120`,
+    ),
+  ],
+);
+
+export const mealPlanEntries = pgTable(
+  "meal_plan_entry",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    homeId: uuid("homeId")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    recipeId: uuid("recipeId"),
+    customName: text("customName"),
+    date: date("date").notNull(),
+    mealType: text("mealType").$type<MealType>().notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("meal_plan_entry_home_date_idx").on(table.homeId, table.date),
+    /**
+     * MATCH SIMPLE: a null recipeId skips the check so custom-name-only rows
+     * are allowed.
+     */
+    foreignKey({
+      name: "meal_plan_entry_recipe_home_fk",
+      columns: [table.recipeId, table.homeId],
+      foreignColumns: [recipes.id, recipes.homeId],
+    }).onDelete("cascade"),
+    check(
+      "meal_plan_entry_meal_type_check",
+      sql`${table.mealType} in ('breakfast', 'lunch', 'dinner', 'snack')`,
+    ),
+    check(
+      "meal_plan_entry_has_meal_check",
+      sql`${table.recipeId} is not null or ${table.customName} is not null`,
+    ),
+    check(
+      "meal_plan_entry_custom_name_length_check",
+      sql`${table.customName} is null or char_length(${table.customName}) between 1 and 120`,
     ),
   ],
 );

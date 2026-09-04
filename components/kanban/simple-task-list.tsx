@@ -1,10 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, TextInput } from "react-native-paper";
 import {
   createTask as createTaskRequest,
+  listCompletedTasks,
   moveTask as moveTaskRequest,
+  TASK_PAGE_FIRST,
+  TASK_PAGE_NEXT,
   type Task,
 } from "../../lib/api/tasks";
 import {
@@ -25,53 +28,98 @@ export function SimpleTaskList({
   homeId,
   tasks,
   onTasksChange,
-  onRefresh,
 }: {
   homeId: string;
   tasks: Task[];
   onTasksChange: (next: Task[]) => void;
-  onRefresh: () => Promise<void>;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [pendingAdd, setPendingAdd] = useState(false);
 
-  const ordered = useMemo(
-    () =>
-      // Hermes has no Array.toSorted.
-      // eslint-disable-next-line unicorn/no-array-sort
-      [...tasks].sort((a, b) => {
-        const byCreated = a.createdAt.localeCompare(b.createdAt);
-        return byCreated !== 0 ? byCreated : a.id.localeCompare(b.id);
-      }),
-    [tasks],
+  const [completedOpen, setCompletedOpen] = useState(false);
+  const [completed, setCompleted] = useState<Task[]>([]);
+  const [completedFetched, setCompletedFetched] = useState(0);
+  const [completedHasMore, setCompletedHasMore] = useState(true);
+  const [completedLoaded, setCompletedLoaded] = useState(false);
+  const [completedLoading, setCompletedLoading] = useState(false);
+
+  const loadCompleted = useCallback(
+    async (offset: number, limit: number) => {
+      setError(null);
+      setCompletedLoading(true);
+      try {
+        const page = await listCompletedTasks(homeId, { offset, limit });
+        setCompleted((current) => {
+          if (offset === 0) {
+            return page;
+          }
+          const seen = new Set(current.map((task) => task.id));
+          return [...current, ...page.filter((task) => !seen.has(task.id))];
+        });
+        setCompletedFetched(offset + page.length);
+        setCompletedHasMore(page.length === limit);
+        setCompletedLoaded(true);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not load completed tasks.",
+        );
+      } finally {
+        setCompletedLoading(false);
+      }
+    },
+    [homeId],
   );
+
+  const toggleCompletedSection = useCallback(() => {
+    const next = !completedOpen;
+    setCompletedOpen(next);
+    if (next && !completedLoaded && !completedLoading) {
+      void loadCompleted(0, TASK_PAGE_FIRST);
+    }
+  }, [completedLoaded, completedLoading, completedOpen, loadCompleted]);
 
   const toggle = useCallback(
     async (task: Task) => {
-      const complete = task.status !== "complete";
-      const status = complete ? "complete" : "in_progress";
-      const previous = tasks;
-      const targetMax = previous
+      const markingComplete = task.status !== "complete";
+      const status = markingComplete ? "complete" : "in_progress";
+      const previousOpen = tasks;
+      const previousCompleted = completed;
+      const pool = markingComplete ? previousOpen : previousCompleted;
+      const targetMax = pool
         .filter((candidate) => candidate.status === status)
         .reduce((max, candidate) => Math.max(max, candidate.position), -1);
       const position = targetMax + 1;
+      const next: Task = {
+        ...task,
+        status,
+        position,
+        updatedAt: new Date().toISOString(),
+      };
 
       setError(null);
       setBusyTaskId(task.id);
-      onTasksChange(
-        previous.map((candidate) =>
-          candidate.id === task.id
-            ? { ...candidate, status, position }
-            : candidate,
-        ),
-      );
+      if (markingComplete) {
+        onTasksChange(previousOpen.filter((candidate) => candidate.id !== task.id));
+        if (completedLoaded) {
+          setCompleted([next, ...previousCompleted]);
+        }
+      } else {
+        setCompleted(
+          previousCompleted.filter((candidate) => candidate.id !== task.id),
+        );
+        onTasksChange([next, ...previousOpen]);
+      }
 
       try {
         await moveTaskRequest({ homeId, taskId: task.id, status, position });
       } catch (err) {
-        onTasksChange(previous);
+        onTasksChange(previousOpen);
+        setCompleted(previousCompleted);
         setError(
           err instanceof Error ? err.message : "Could not update that item.",
         );
@@ -79,8 +127,13 @@ export function SimpleTaskList({
         setBusyTaskId(null);
       }
     },
-    [homeId, onTasksChange, tasks],
+    [completed, completedLoaded, homeId, onTasksChange, tasks],
   );
+
+  const cancelCompose = useCallback(() => {
+    setComposing(false);
+    setTitle("");
+  }, []);
 
   const add = useCallback(async () => {
     const trimmed = title.trim();
@@ -91,19 +144,19 @@ export function SimpleTaskList({
     setError(null);
     setPendingAdd(true);
     try {
-      await createTaskRequest({
+      const created = await createTaskRequest({
         homeId,
         title: trimmed,
         status: "in_progress",
       });
-      setTitle("");
-      await onRefresh();
+      onTasksChange([created, ...tasks]);
+      cancelCompose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add item.");
     } finally {
       setPendingAdd(false);
     }
-  }, [homeId, onRefresh, title]);
+  }, [cancelCompose, homeId, onTasksChange, tasks, title]);
 
   return (
     <View style={styles.root}>
@@ -113,72 +166,159 @@ export function SimpleTaskList({
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
       >
-        {ordered.length === 0 ? (
-          <Text style={styles.empty}>Nothing to do yet.</Text>
-        ) : (
-          ordered.map((task) => {
-            const done = task.status === "complete";
-            const busy = busyTaskId === task.id;
-            return (
-              <Pressable
-                key={task.id}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: done, disabled: busy }}
-                disabled={busy}
-                onPress={() => void toggle(task)}
-                style={({ pressed }) => [
-                  styles.row,
-                  done && styles.rowDone,
-                  pressed && styles.rowPressed,
-                  busy && styles.rowBusy,
-                ]}
+        {composing ? (
+          <View style={styles.composeCard}>
+            <TextInput
+              label="Task"
+              value={title}
+              onChangeText={setTitle}
+              mode="outlined"
+              dense
+              autoFocus
+              maxLength={200}
+              onSubmitEditing={() => void add()}
+              returnKeyType="done"
+              style={styles.composeInput}
+            />
+            <View style={styles.composeActions}>
+              <Button
+                mode="text"
+                compact
+                textColor={colors.muted}
+                disabled={pendingAdd}
+                onPress={cancelCompose}
               >
-                <View
-                  style={[styles.checkbox, done && styles.checkboxDone]}
-                >
-                  {done ? (
-                    <MaterialCommunityIcons
-                      name="check"
-                      size={16}
-                      color={colors.muted}
-                    />
-                  ) : null}
-                </View>
-                <Text
-                  style={[styles.title, done && styles.titleDone]}
-                  numberOfLines={3}
-                >
-                  {task.title}
-                </Text>
-              </Pressable>
-            );
-          })
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                compact
+                loading={pendingAdd}
+                disabled={pendingAdd || !title.trim()}
+                onPress={() => void add()}
+              >
+                Save
+              </Button>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add task"
+            onPress={() => setComposing(true)}
+            style={({ pressed }) => [
+              styles.addTrigger,
+              pressed && styles.addTriggerPressed,
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={18}
+              color={colors.muted}
+            />
+            <Text style={styles.addTriggerLabel}>Add task</Text>
+          </Pressable>
         )}
 
-        <View style={styles.add}>
-          <TextInput
-            label="Add item"
-            value={title}
-            onChangeText={setTitle}
-            mode="outlined"
-            dense
-            maxLength={200}
-            onSubmitEditing={() => void add()}
-            returnKeyType="done"
-            style={styles.addInput}
+        {tasks.length === 0 && !composing ? (
+          <Text style={styles.empty}>Nothing to do yet.</Text>
+        ) : (
+          tasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              done={false}
+              busy={busyTaskId === task.id}
+              onToggle={() => void toggle(task)}
+            />
+          ))
+        )}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: completedOpen }}
+          onPress={toggleCompletedSection}
+          style={({ pressed }) => [
+            styles.completedToggle,
+            pressed && styles.completedTogglePressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={completedOpen ? "chevron-down" : "chevron-right"}
+            size={20}
+            color={colors.muted}
           />
-          <Button
-            mode="contained"
-            compact
-            loading={pendingAdd}
-            disabled={pendingAdd || !title.trim()}
-            onPress={() => void add()}
-          >
-            Add
-          </Button>
-        </View>
+          <Text style={styles.completedToggleLabel}>Completed</Text>
+        </Pressable>
+
+        {completedOpen ? (
+          <>
+            {completed.length === 0 && completedLoaded && !completedLoading ? (
+              <Text style={styles.empty}>Nothing completed.</Text>
+            ) : (
+              completed.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  done
+                  busy={busyTaskId === task.id}
+                  onToggle={() => void toggle(task)}
+                />
+              ))
+            )}
+            {completedHasMore && completedLoaded ? (
+              <Button
+                mode="text"
+                textColor={colors.muted}
+                loading={completedLoading}
+                disabled={completedLoading}
+                onPress={() =>
+                  void loadCompleted(completedFetched, TASK_PAGE_NEXT)
+                }
+              >
+                Load more
+              </Button>
+            ) : null}
+          </>
+        ) : null}
       </ScrollView>
     </View>
+  );
+}
+
+function TaskRow({
+  task,
+  done,
+  busy,
+  onToggle,
+}: {
+  task: Task;
+  done: boolean;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: done, disabled: busy }}
+      disabled={busy}
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.row,
+        done && styles.rowDone,
+        pressed && styles.rowPressed,
+        busy && styles.rowBusy,
+      ]}
+    >
+      <View style={[styles.checkbox, done && styles.checkboxDone]}>
+        {done ? (
+          <MaterialCommunityIcons name="check" size={16} color={colors.muted} />
+        ) : null}
+      </View>
+      <Text style={[styles.title, done && styles.titleDone]} numberOfLines={3}>
+        {task.title}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -196,6 +336,39 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     paddingVertical: 8,
+  },
+  addTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: TOUCH_TARGET,
+    paddingHorizontal: 12,
+    opacity: 0.55,
+  },
+  addTriggerPressed: {
+    opacity: 0.35,
+  },
+  addTriggerLabel: {
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  composeCard: {
+    gap: 8,
+    padding: 10,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  composeInput: {
+    fontSize: INPUT_FONT_SIZE,
+    backgroundColor: colors.surface,
+  },
+  composeActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 4,
   },
   row: {
     flexDirection: "row",
@@ -245,17 +418,21 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     fontWeight: "500",
   },
-  add: {
-    gap: 8,
+  completedToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    minHeight: TOUCH_TARGET,
     marginTop: 8,
-    padding: 10,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
   },
-  addInput: {
-    fontSize: INPUT_FONT_SIZE,
-    backgroundColor: colors.surface,
+  completedTogglePressed: {
+    opacity: 0.7,
+  },
+  completedToggleLabel: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
 });

@@ -313,6 +313,188 @@ export type Database = {
           },
         ];
       };
+
+      ingredient: {
+        Row: {
+          id: string;
+          homeId: string;
+          name: string;
+          servingSizeGrams: string | null;
+          calories: string | null;
+          carbsGrams: string | null;
+          fatsGrams: string | null;
+          proteinGrams: string | null;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          homeId: string;
+          name: string;
+          servingSizeGrams?: string | number | null;
+          calories?: string | number | null;
+          carbsGrams?: string | number | null;
+          fatsGrams?: string | number | null;
+          proteinGrams?: string | number | null;
+          createdAt?: string;
+        };
+        Update: {
+          name?: string;
+          servingSizeGrams?: string | number | null;
+          calories?: string | number | null;
+          carbsGrams?: string | number | null;
+          fatsGrams?: string | number | null;
+          proteinGrams?: string | number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_homeId_home_id_fk";
+            columns: ["homeId"];
+            isOneToOne: false;
+            referencedRelation: "home";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      recipe: {
+        Row: {
+          id: string;
+          homeId: string;
+          name: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          homeId: string;
+          name: string;
+          createdAt?: string;
+        };
+        Update: {
+          name?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_homeId_home_id_fk";
+            columns: ["homeId"];
+            isOneToOne: false;
+            referencedRelation: "home";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      recipe_ingredient: {
+        Row: {
+          id: string;
+          recipeId: string;
+          ingredientId: string;
+          homeId: string;
+          quantity: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          recipeId: string;
+          ingredientId: string;
+          homeId: string;
+          quantity?: string | number;
+          createdAt?: string;
+        };
+        Update: {
+          quantity?: string | number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredient_recipe_home_fk";
+            columns: ["recipeId", "homeId"];
+            isOneToOne: false;
+            referencedRelation: "recipe";
+            referencedColumns: ["id", "homeId"];
+          },
+          {
+            foreignKeyName: "recipe_ingredient_ingredient_home_fk";
+            columns: ["ingredientId", "homeId"];
+            isOneToOne: false;
+            referencedRelation: "ingredient";
+            referencedColumns: ["id", "homeId"];
+          },
+        ];
+      };
+
+      grocery_item: {
+        Row: {
+          id: string;
+          homeId: string;
+          name: string;
+          isCompleted: boolean;
+          weekStartDate: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          homeId: string;
+          name: string;
+          isCompleted?: boolean;
+          weekStartDate: string;
+          createdAt?: string;
+        };
+        Update: {
+          name?: string;
+          isCompleted?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "grocery_item_homeId_home_id_fk";
+            columns: ["homeId"];
+            isOneToOne: false;
+            referencedRelation: "home";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      meal_plan_entry: {
+        Row: {
+          id: string;
+          homeId: string;
+          recipeId: string | null;
+          customName: string | null;
+          date: string;
+          mealType: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          homeId: string;
+          recipeId?: string | null;
+          customName?: string | null;
+          date: string;
+          mealType: string;
+          createdAt?: string;
+        };
+        Update: {
+          recipeId?: string | null;
+          customName?: string | null;
+          date?: string;
+          mealType?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_entry_homeId_home_id_fk";
+            columns: ["homeId"];
+            isOneToOne: false;
+            referencedRelation: "home";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meal_plan_entry_recipe_home_fk";
+            columns: ["recipeId", "homeId"];
+            isOneToOne: false;
+            referencedRelation: "recipe";
+            referencedColumns: ["id", "homeId"];
+          },
+        ];
+      };
     };
 
     Views: { [_ in never]: never };

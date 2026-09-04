@@ -7,7 +7,7 @@ type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
  * The household apps reachable from the custom bottom bar / arc switcher.
  * Tab route names match expo-router file routes under (tabs)/.
  */
-export type HomeAppId = "index" | "tasks" | "chat";
+export type HomeAppId = "index" | "tasks" | "chat" | "meals";
 
 export type HomeApp = {
   id: HomeAppId;
@@ -21,6 +21,7 @@ export const HOME_APPS: readonly HomeApp[] = [
   { id: "index", label: "Home", icon: "home", isHome: true },
   { id: "tasks", label: "Tasks", icon: "view-column", isHome: false },
   { id: "chat", label: "Chat", icon: "message", isHome: false },
+  { id: "meals", label: "Meals", icon: "food-apple", isHome: false },
 ] as const;
 
 export function getHomeApp(id: HomeAppId): HomeApp {

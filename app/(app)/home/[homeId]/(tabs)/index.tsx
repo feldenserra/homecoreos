@@ -103,6 +103,12 @@ export default function DashboardScreen() {
           meta="Ask the house"
           onPress={() => router.push(`/home/${home.id}/chat`)}
         />
+        <Tile
+          icon="food-apple"
+          name="Meals"
+          meta="Recipes & plan"
+          onPress={() => router.push(`/home/${home.id}/meals`)}
+        />
       </View>
 
       <View style={styles.inviteBlock}>

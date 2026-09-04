@@ -20,3 +20,18 @@ export const AI_KEY_SOURCE_LABELS: Record<AiKeySource, string> = {
   ollama: "Ollama",
   cloudflare: "Cloudflare",
 };
+
+export const MEAL_TYPES = [
+  "breakfast",
+  "lunch",
+  "dinner",
+  "snack",
+] as const;
+export type MealType = (typeof MEAL_TYPES)[number];
+
+export const MEAL_TYPE_LABELS: Record<MealType, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snack: "Snack",
+};

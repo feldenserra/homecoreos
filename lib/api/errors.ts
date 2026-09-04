@@ -33,6 +33,24 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
     "AI settings must be saved through the AI settings service.",
   user_ai_key_api_key_encrypted_check:
     "AI settings must be saved through the AI settings service.",
+  ingredient_name_length_check:
+    "Ingredient name must be between 1 and 80 characters.",
+  ingredient_serving_size_check: "Serving size cannot be negative.",
+  ingredient_calories_check: "Calories cannot be negative.",
+  ingredient_carbs_check: "Carbs cannot be negative.",
+  ingredient_fats_check: "Fats cannot be negative.",
+  ingredient_protein_check: "Protein cannot be negative.",
+  recipe_name_length_check: "Recipe name must be between 1 and 120 characters.",
+  recipe_ingredient_quantity_check: "Quantity must be greater than zero.",
+  recipe_ingredient_recipe_ingredient_key:
+    "That ingredient is already on this recipe.",
+  grocery_item_name_length_check:
+    "Grocery item must be between 1 and 120 characters.",
+  meal_plan_entry_meal_type_check: "Invalid meal type.",
+  meal_plan_entry_has_meal_check:
+    "Pick a recipe or enter a custom meal name.",
+  meal_plan_entry_custom_name_length_check:
+    "Meal name must be between 1 and 120 characters.",
 };
 
 function constraintName(error: PostgrestError): string | null {

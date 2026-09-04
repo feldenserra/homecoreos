@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   type NativeScrollEvent,
@@ -21,7 +21,12 @@ import {
   assignTask as assignTaskRequest,
   createTask as createTaskRequest,
   deleteTask as deleteTaskRequest,
+  isPagedKanbanStatus,
+  listTasksByStatus,
   moveTask as moveTaskRequest,
+  TASK_PAGE_FIRST,
+  TASK_PAGE_NEXT,
+  type PagedKanbanStatus,
   type Task,
 } from "../../lib/api/tasks";
 import { TASK_STATUSES, type TaskStatus } from "../../lib/types";
@@ -73,6 +78,35 @@ const PICKER_CELLS: TaskStatus[] = [
   "stuck",
 ];
 
+type PageSlot = {
+  fetched: number;
+  hasMore: boolean;
+  loading: boolean;
+};
+
+type PageState = Record<PagedKanbanStatus, PageSlot>;
+
+function countStatus(tasks: Task[], status: TaskStatus): number {
+  return tasks.filter((task) => task.status === status).length;
+}
+
+function initialPageState(tasks: Task[]): PageState {
+  const notStarted = countStatus(tasks, "not_started");
+  const complete = countStatus(tasks, "complete");
+  return {
+    not_started: {
+      fetched: notStarted,
+      hasMore: notStarted >= TASK_PAGE_FIRST,
+      loading: false,
+    },
+    complete: {
+      fetched: complete,
+      hasMore: complete >= TASK_PAGE_FIRST,
+      loading: false,
+    },
+  };
+}
+
 function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   const groups: Record<TaskStatus, Task[]> = {
     not_started: [],
@@ -96,16 +130,34 @@ export function KanbanBoard({
   homeId,
   tasks,
   onTasksChange,
-  onRefresh,
 }: {
   homeId: string;
   tasks: Task[];
   /** Applies an optimistic update; returning the previous list enables rollback. */
   onTasksChange: (next: Task[]) => void;
-  onRefresh: () => Promise<void>;
 }) {
   const { width } = useWindowDimensions();
   const groups = useMemo(() => groupByStatus(tasks), [tasks]);
+  const [pageState, setPageState] = useState(() => initialPageState(tasks));
+  // Board-driven updates (add/move/delete/load more) skip the pageState reset
+  // that parent snapshots (initial load, focus refresh) need.
+  const localTasksUpdate = useRef(false);
+  const applyTasks = useCallback(
+    (next: Task[]) => {
+      localTasksUpdate.current = true;
+      onTasksChange(next);
+    },
+    [onTasksChange],
+  );
+
+  useEffect(() => {
+    if (localTasksUpdate.current) {
+      localTasksUpdate.current = false;
+      return;
+    }
+    setPageState(initialPageState(tasks));
+  }, [tasks]);
+
   const membersState = useAsync(
     async () => await listHomeMembers(homeId),
     [homeId],
@@ -180,7 +232,7 @@ export function KanbanBoard({
 
       setError(null);
       setBusyTaskId(task.id);
-      onTasksChange(
+      applyTasks(
         previous.map((candidate) =>
           candidate.id === task.id
             ? { ...candidate, status, position }
@@ -191,13 +243,13 @@ export function KanbanBoard({
       try {
         await moveTaskRequest({ homeId, taskId: task.id, status, position });
       } catch (err) {
-        onTasksChange(previous);
+        applyTasks(previous);
         setError(err instanceof Error ? err.message : "Could not move task.");
       } finally {
         setBusyTaskId(null);
       }
     },
-    [homeId, onTasksChange, tasks],
+    [applyTasks, homeId, tasks],
   );
 
   const remove = useCallback(
@@ -207,33 +259,94 @@ export function KanbanBoard({
 
       setError(null);
       setBusyTaskId(task.id);
-      onTasksChange(previous.filter((candidate) => candidate.id !== task.id));
+      applyTasks(previous.filter((candidate) => candidate.id !== task.id));
 
       try {
         await deleteTaskRequest({ homeId, taskId: task.id });
       } catch (err) {
-        onTasksChange(previous);
+        applyTasks(previous);
         setError(err instanceof Error ? err.message : "Could not delete task.");
       } finally {
         setBusyTaskId(null);
       }
     },
-    [homeId, onTasksChange, tasks],
+    [applyTasks, homeId, tasks],
   );
 
   const add = useCallback(
     async (status: TaskStatus, title: string) => {
       setError(null);
       try {
-        // create_task computes max(position) + 1 server-side, so there is
-        // nothing to guess and nothing to reconcile.
-        await createTaskRequest({ homeId, title, status });
-        await onRefresh();
+        // create_task bumps existing positions and inserts at 0. Prepend and
+        // shift local positions so groupByStatus keeps the new card on top.
+        const created = await createTaskRequest({ homeId, title, status });
+        applyTasks([
+          created,
+          ...tasks.map((task) =>
+            task.status === status
+              ? { ...task, position: task.position + 1 }
+              : task,
+          ),
+        ]);
+        if (isPagedKanbanStatus(status)) {
+          setPageState((current) => ({
+            ...current,
+            [status]: {
+              ...current[status],
+              fetched: current[status].fetched + 1,
+            },
+          }));
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not add task.");
       }
     },
-    [homeId, onRefresh],
+    [applyTasks, homeId, tasks],
+  );
+
+  const loadMore = useCallback(
+    async (status: PagedKanbanStatus) => {
+      const slot = pageState[status];
+      if (slot.loading || !slot.hasMore) {
+        return;
+      }
+
+      setError(null);
+      setPageState((current) => ({
+        ...current,
+        [status]: { ...current[status], loading: true },
+      }));
+
+      try {
+        const page = await listTasksByStatus(homeId, {
+          status,
+          offset: slot.fetched,
+          limit: TASK_PAGE_NEXT,
+        });
+        const seen = new Set(tasks.map((task) => task.id));
+        applyTasks([
+          ...tasks,
+          ...page.filter((task) => !seen.has(task.id)),
+        ]);
+        setPageState((current) => ({
+          ...current,
+          [status]: {
+            fetched: slot.fetched + page.length,
+            hasMore: page.length === TASK_PAGE_NEXT,
+            loading: false,
+          },
+        }));
+      } catch (err) {
+        setPageState((current) => ({
+          ...current,
+          [status]: { ...current[status], loading: false },
+        }));
+        setError(
+          err instanceof Error ? err.message : "Could not load more tasks.",
+        );
+      }
+    },
+    [applyTasks, homeId, pageState, tasks],
   );
 
   const assign = useCallback(
@@ -249,7 +362,7 @@ export function KanbanBoard({
       setError(null);
       setBusyTaskId(task.id);
       setPicked(next);
-      onTasksChange(
+      applyTasks(
         previous.map((candidate) =>
           candidate.id === task.id ? next : candidate,
         ),
@@ -259,7 +372,7 @@ export function KanbanBoard({
         await assignTaskRequest({ homeId, taskId: task.id, assignedToUserId });
       } catch (err) {
         setPicked(task);
-        onTasksChange(previous);
+        applyTasks(previous);
         setError(
           err instanceof Error ? err.message : "Could not assign that task.",
         );
@@ -267,7 +380,7 @@ export function KanbanBoard({
         setBusyTaskId(null);
       }
     },
-    [homeId, onTasksChange, tasks],
+    [applyTasks, homeId, tasks],
   );
 
   return (
@@ -321,18 +434,29 @@ export function KanbanBoard({
         onMomentumScrollEnd={onColumnsScroll}
         scrollEventThrottle={16}
       >
-        {TASK_STATUSES.map((status) => (
-          <Column
-            key={status}
-            status={status}
-            width={columnWidth}
-            tasks={groups[status]}
-            membersById={membersById}
-            busyTaskId={busyTaskId}
-            onOpenTask={setPicked}
-            onAdd={add}
-          />
-        ))}
+        {TASK_STATUSES.map((status) => {
+          const pagedStatus = isPagedKanbanStatus(status) ? status : null;
+          const paged = pagedStatus ? pageState[pagedStatus] : null;
+          return (
+            <Column
+              key={status}
+              status={status}
+              width={columnWidth}
+              tasks={groups[status]}
+              membersById={membersById}
+              busyTaskId={busyTaskId}
+              onOpenTask={setPicked}
+              onAdd={add}
+              hasMore={paged?.hasMore ?? false}
+              loadingMore={paged?.loading ?? false}
+              onLoadMore={
+                pagedStatus
+                  ? () => void loadMore(pagedStatus)
+                  : undefined
+              }
+            />
+          );
+        })}
       </ScrollView>
 
       <Portal>
@@ -484,6 +608,9 @@ function Column({
   busyTaskId,
   onOpenTask,
   onAdd,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: {
   status: TaskStatus;
   width: number;
@@ -492,6 +619,9 @@ function Column({
   busyTaskId: string | null;
   onOpenTask: (task: Task) => void;
   onAdd: (status: TaskStatus, title: string) => Promise<void>;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore?: () => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
@@ -524,38 +654,8 @@ function Column({
         style={styles.columnBody}
         contentContainerStyle={styles.columnBodyContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {tasks.map((task) => {
-          const assignee = task.assignedToUserId
-            ? membersById.get(task.assignedToUserId)
-            : undefined;
-          return (
-            <Pressable
-              key={task.id}
-              accessibilityRole="button"
-              accessibilityHint="Opens the move, assign, and delete options"
-              onPress={() => onOpenTask(task)}
-              disabled={busyTaskId === task.id}
-              style={({ pressed }) => [
-                styles.taskCard,
-                pressed && styles.taskCardPressed,
-                busyTaskId === task.id && styles.taskCardBusy,
-              ]}
-            >
-              <Text style={styles.taskTitle}>{task.title}</Text>
-              {busyTaskId === task.id ? (
-                <ActivityIndicator size="small" color={colors.muted} />
-              ) : assignee ? (
-                <MemberAvatar member={assignee} />
-              ) : null}
-            </Pressable>
-          );
-        })}
-
-        {tasks.length === 0 && !adding ? (
-          <Text style={styles.emptyText}>Nothing here.</Text>
-        ) : null}
-
         {adding ? (
           <View style={styles.addForm}>
             <TextInput
@@ -611,6 +711,50 @@ function Column({
             Add task
           </Button>
         )}
+
+        {tasks.map((task) => {
+          const assignee = task.assignedToUserId
+            ? membersById.get(task.assignedToUserId)
+            : undefined;
+          return (
+            <Pressable
+              key={task.id}
+              accessibilityRole="button"
+              accessibilityHint="Opens the move, assign, and delete options"
+              onPress={() => onOpenTask(task)}
+              disabled={busyTaskId === task.id}
+              style={({ pressed }) => [
+                styles.taskCard,
+                pressed && styles.taskCardPressed,
+                busyTaskId === task.id && styles.taskCardBusy,
+              ]}
+            >
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              {busyTaskId === task.id ? (
+                <ActivityIndicator size="small" color={colors.muted} />
+              ) : assignee ? (
+                <MemberAvatar member={assignee} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+
+        {hasMore && onLoadMore ? (
+          <Button
+            mode="text"
+            compact
+            textColor={colors.muted}
+            loading={loadingMore}
+            disabled={loadingMore}
+            onPress={onLoadMore}
+          >
+            Load more
+          </Button>
+        ) : null}
+
+        {tasks.length === 0 && !adding ? (
+          <Text style={styles.emptyText}>Nothing here.</Text>
+        ) : null}
       </ScrollView>
     </View>
   );

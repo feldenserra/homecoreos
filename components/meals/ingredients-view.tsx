@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
@@ -33,17 +33,13 @@ import {
   TOUCH_TARGET,
 } from "../../theme/tokens";
 
-type Props = {
-  onEdit: (ingredient: Ingredient) => void;
-  /** Bumps when the shell saves an ingredient so this list refreshes. */
-  refreshKey?: number;
-};
-
 /**
  * Standalone ingredient manager: filter, edit, delete with usage warning.
+ * Create/edit open Settings-style modal routes under /meal/ingredient.
  */
-export function IngredientsView({ onEdit, refreshKey = 0 }: Props) {
+export function IngredientsView() {
   const home = useHome();
+  const router = useRouter();
   const [filter, setFilter] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -51,14 +47,14 @@ export function IngredientsView({ onEdit, refreshKey = 0 }: Props) {
 
   const state = useAsync(
     async () => await listIngredients(home.id),
-    [home.id, refreshKey],
+    [home.id],
   );
 
   useFocusEffect(
     useCallback(() => {
       void state.refresh();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [home.id, refreshKey]),
+    }, [home.id]),
   );
 
   const flash = useCallback((message: string) => {
@@ -175,7 +171,11 @@ export function IngredientsView({ onEdit, refreshKey = 0 }: Props) {
               key={ingredient.id}
               ingredient={ingredient}
               busy={busyId === ingredient.id}
-              onEdit={() => onEdit(ingredient)}
+              onEdit={() =>
+                router.push(
+                  `/home/${home.id}/meal/ingredient?ingredientId=${ingredient.id}`,
+                )
+              }
               onDelete={() => void confirmRemove(ingredient)}
             />
           ))

@@ -46,6 +46,8 @@ export type GroceryItem = {
   id: string;
   homeId: string;
   name: string;
+  ingredientId: string | null;
+  quantity: string;
   isCompleted: boolean;
   weekStartDate: string;
   createdAt: string;
@@ -64,6 +66,19 @@ export type MealPlanEntry = {
 
 function escapeIlike(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+/**
+ * Normalize a grocery/ingredient display name for matching: trim, lower-case,
+ * collapse spaces, and strip a trailing " × N" / " x N" from pre-migration rows.
+ */
+export function normalizeGroceryName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s*[×x]\s*[0-9]+(?:\.[0-9]+)?\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function numericOrNull(
@@ -233,6 +248,40 @@ export async function listRecipesWithIngredients(
   return (data ?? []) as RecipeWithIngredients[];
 }
 
+export async function getRecipeWithIngredients(
+  homeId: string,
+  recipeId: string,
+): Promise<RecipeWithIngredients> {
+  const { data, error } = await supabase
+    .from("recipe")
+    .select("*, recipe_ingredient(*, ingredient:ingredient(*))")
+    .eq("homeId", homeId)
+    .eq("id", recipeId)
+    .single();
+
+  if (error || !data) {
+    throw new Error(messageFromError(error, "Could not load recipe."));
+  }
+  return data as RecipeWithIngredients;
+}
+
+export async function getIngredient(
+  homeId: string,
+  ingredientId: string,
+): Promise<Ingredient> {
+  const { data, error } = await supabase
+    .from("ingredient")
+    .select("*")
+    .eq("homeId", homeId)
+    .eq("id", ingredientId)
+    .single();
+
+  if (error || !data) {
+    throw new Error(messageFromError(error, "Could not load ingredient."));
+  }
+  return data as Ingredient;
+}
+
 export async function createRecipe(input: {
   homeId: string;
   name: string;
@@ -355,7 +404,7 @@ export async function addRecipeToGrocery(input: {
 }): Promise<number> {
   const { data, error } = await supabase
     .from("recipe_ingredient")
-    .select("quantity, ingredient:ingredient(name)")
+    .select("ingredientId, quantity, ingredient:ingredient(name)")
     .eq("recipeId", input.recipeId)
     .eq("homeId", input.homeId);
 
@@ -366,45 +415,108 @@ export async function addRecipeToGrocery(input: {
   }
 
   type Line = {
+    ingredientId: string;
     quantity: string;
     ingredient: { name: string } | null;
   };
-  const lines = (data ?? []) as Line[];
+  const lines = ((data ?? []) as Line[]).filter(
+    (line) => line.ingredient?.name,
+  );
   if (lines.length === 0) {
     return 0;
   }
 
-  const rows = lines
-    .filter((line) => line.ingredient?.name)
-    .map((line) => {
-      const qty = Number(line.quantity);
-      const name =
-        Number.isFinite(qty) && qty !== 1
-          ? `${line.ingredient!.name} × ${qty}`
-          : line.ingredient!.name;
-      return {
-        homeId: input.homeId,
-        name,
-        weekStartDate: input.weekStartDate,
-        isCompleted: false,
-      };
-    });
-
-  if (rows.length === 0) {
-    return 0;
-  }
-
-  const { error: insertError } = await supabase
+  const { data: existingRows, error: listError } = await supabase
     .from("grocery_item")
-    .insert(rows);
+    .select("*")
+    .eq("homeId", input.homeId)
+    .eq("weekStartDate", input.weekStartDate)
+    .eq("isCompleted", false);
 
-  if (insertError) {
+  if (listError) {
     throw new Error(
-      messageFromError(insertError, "Could not add items to the grocery list."),
+      messageFromError(listError, "Could not load grocery list."),
     );
   }
 
-  return rows.length;
+  const active = (existingRows ?? []) as GroceryItem[];
+  let applied = 0;
+
+  for (const line of lines) {
+    const addQty = Number(line.quantity);
+    if (!Number.isFinite(addQty) || addQty <= 0) {
+      continue;
+    }
+
+    const ingredientName = line.ingredient!.name;
+    const normalizedName = normalizeGroceryName(ingredientName);
+
+    const match =
+      active.find(
+        (row) =>
+          row.ingredientId != null && row.ingredientId === line.ingredientId,
+      ) ??
+      active.find(
+        (row) => normalizeGroceryName(row.name) === normalizedName,
+      );
+
+    if (match) {
+      const nextQty = (Number(match.quantity) || 0) + addQty;
+      const patch: {
+        quantity: number;
+        ingredientId?: string;
+      } = { quantity: nextQty };
+      if (match.ingredientId == null) {
+        patch.ingredientId = line.ingredientId;
+      }
+
+      const { error: updateError } = await supabase
+        .from("grocery_item")
+        .update(patch)
+        .eq("id", match.id)
+        .eq("homeId", input.homeId);
+
+      if (updateError) {
+        throw new Error(
+          messageFromError(
+            updateError,
+            "Could not update grocery list item.",
+          ),
+        );
+      }
+
+      match.quantity = String(nextQty);
+      if (match.ingredientId == null) {
+        match.ingredientId = line.ingredientId;
+      }
+      applied += 1;
+      continue;
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("grocery_item")
+      .insert({
+        homeId: input.homeId,
+        name: ingredientName,
+        ingredientId: line.ingredientId,
+        quantity: addQty,
+        weekStartDate: input.weekStartDate,
+        isCompleted: false,
+      })
+      .select("*")
+      .single();
+
+    if (insertError || !inserted) {
+      throw new Error(
+        messageFromError(insertError, "Could not add items to the grocery list."),
+      );
+    }
+
+    active.push(inserted as GroceryItem);
+    applied += 1;
+  }
+
+  return applied;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,85 +1,34 @@
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { Button, Modal, Portal, TextInput } from "react-native-paper";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Button, TextInput } from "react-native-paper";
 import { ErrorText, MetaLabel } from "../ui";
 import {
   createIngredient,
   updateIngredient,
   type Ingredient,
 } from "../../lib/api/meals";
-import { useHome } from "../../lib/home-context";
-import {
-  colors,
-  INPUT_FONT_SIZE,
-  radius,
-  shadowLift,
-} from "../../theme/tokens";
+import { colors, INPUT_FONT_SIZE } from "../../theme/tokens";
 
 type Props = {
-  visible: boolean;
+  homeId: string;
   /** When set, the form edits this ingredient; otherwise creates. */
   ingredient?: Ingredient | null;
   /** Prefill name when creating (e.g. from recipe search query). */
   initialName?: string;
-  /** Raise above a parent recipe modal when nested. */
-  elevated?: boolean;
   onDismiss: () => void;
   onSaved: (ingredient: Ingredient) => void;
 };
 
 /**
- * Shared create/edit sheet for ingredients (name, serving g, macros).
- * Remounts form body via key when opened so fields reset without effects.
+ * Ingredient create/edit form body for the meal/ingredient modal route.
  */
-export function IngredientFormModal({
-  visible,
-  ingredient,
+export function IngredientForm({
+  homeId,
+  ingredient = null,
   initialName = "",
-  elevated = false,
   onDismiss,
   onSaved,
 }: Props) {
-  const formKey = ingredient
-    ? `edit-${ingredient.id}`
-    : `new-${initialName}-${visible ? "open" : "closed"}`;
-
-  return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onDismiss}
-        contentContainerStyle={[
-          styles.sheet,
-          elevated && styles.sheetElevated,
-        ]}
-        style={elevated ? styles.portalElevated : undefined}
-      >
-        {visible ? (
-          <IngredientFormBody
-            key={formKey}
-            ingredient={ingredient ?? null}
-            initialName={initialName}
-            onDismiss={onDismiss}
-            onSaved={onSaved}
-          />
-        ) : null}
-      </Modal>
-    </Portal>
-  );
-}
-
-function IngredientFormBody({
-  ingredient,
-  initialName,
-  onDismiss,
-  onSaved,
-}: {
-  ingredient: Ingredient | null;
-  initialName: string;
-  onDismiss: () => void;
-  onSaved: (ingredient: Ingredient) => void;
-}) {
-  const home = useHome();
   const editing = Boolean(ingredient);
   const [name, setName] = useState(ingredient?.name ?? initialName);
   const [serving, setServing] = useState(ingredient?.servingSizeGrams ?? "");
@@ -100,7 +49,7 @@ function IngredientFormBody({
     setPending(true);
     try {
       const payload = {
-        homeId: home.id,
+        homeId,
         name: trimmed,
         servingSizeGrams: serving || null,
         calories: calories || null,
@@ -126,7 +75,7 @@ function IngredientFormBody({
     calories,
     carbs,
     fats,
-    home.id,
+    homeId,
     ingredient,
     name,
     onSaved,
@@ -135,10 +84,10 @@ function IngredientFormBody({
   ]);
 
   return (
-    <>
-      <Text style={styles.sheetTitle}>
-        {editing ? "Edit ingredient" : "New ingredient"}
-      </Text>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.scroll}
+    >
       <MetaLabel>Name</MetaLabel>
       <TextInput
         mode="outlined"
@@ -175,7 +124,7 @@ function IngredientFormBody({
       <Button mode="text" onPress={onDismiss}>
         Cancel
       </Button>
-    </>
+    </ScrollView>
   );
 }
 
@@ -204,26 +153,10 @@ function MacroField({
 }
 
 const styles = StyleSheet.create({
-  portalElevated: {
-    zIndex: 100,
-  },
-  sheet: {
-    marginHorizontal: 20,
-    maxHeight: "90%",
+  scroll: {
     padding: 20,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
     gap: 10,
-    ...shadowLift,
-  },
-  sheetElevated: {
-    zIndex: 101,
-    elevation: 24,
-  },
-  sheetTitle: {
-    color: colors.ink,
-    fontSize: 18,
-    fontWeight: "700",
+    paddingBottom: 40,
   },
   input: {
     fontSize: INPUT_FONT_SIZE,

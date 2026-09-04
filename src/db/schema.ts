@@ -451,6 +451,13 @@ export const groceryItems = pgTable(
       .notNull()
       .references(() => homes.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /**
+     * Optional link to a catalog ingredient. Null for manual grocery rows.
+     * MATCH SIMPLE so a null ingredientId skips the composite FK check.
+     */
+    ingredientId: uuid("ingredientId"),
+    /** Serving/count units from recipes; display as "Name × qty" when ≠ 1. */
+    quantity: numeric("quantity").notNull().default("1"),
     isCompleted: boolean("isCompleted").notNull().default(false),
     /** Always the Monday of the target week, as a calendar date. */
     weekStartDate: date("weekStartDate").notNull(),
@@ -462,9 +469,22 @@ export const groceryItems = pgTable(
       table.weekStartDate,
       table.isCompleted,
     ),
+    /**
+     * MATCH SIMPLE: a null ingredientId skips the check so free-text rows
+     * stay valid.
+     */
+    foreignKey({
+      name: "grocery_item_ingredient_home_fk",
+      columns: [table.ingredientId, table.homeId],
+      foreignColumns: [ingredients.id, ingredients.homeId],
+    }).onDelete("set null"),
     check(
       "grocery_item_name_length_check",
       sql`char_length(${table.name}) between 1 and 120`,
+    ),
+    check(
+      "grocery_item_quantity_check",
+      sql`${table.quantity} > 0`,
     ),
   ],
 );

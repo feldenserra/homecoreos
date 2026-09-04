@@ -268,6 +268,10 @@ function GroceryRow({
   onToggle: () => void;
   onDelete: () => void;
 }) {
+  const qty = Number(item.quantity);
+  const label =
+    Number.isFinite(qty) && qty !== 1 ? `${item.name} × ${qty}` : item.name;
+
   return (
     <View style={[styles.row, done && styles.rowDone, busy && styles.rowBusy]}>
       <Pressable
@@ -287,12 +291,12 @@ function GroceryRow({
           ) : null}
         </View>
         <Text style={[styles.title, done && styles.titleDone]} numberOfLines={3}>
-          {item.name}
+          {label}
         </Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Delete ${item.name}`}
+        accessibilityLabel={`Delete ${label}`}
         disabled={busy}
         onPress={onDelete}
         hitSlop={8}

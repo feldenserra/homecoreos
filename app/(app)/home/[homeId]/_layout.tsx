@@ -67,6 +67,34 @@ export default function HomeLayout() {
             presentation: "modal",
           }}
         />
+        <Stack.Screen
+          name="meal/recipe"
+          options={{
+            title: "Recipe",
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="meal/ingredient"
+          options={{
+            title: "Ingredient",
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="meal/actions"
+          options={{
+            title: "Recipe",
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="meal/plan-add"
+          options={{
+            title: "Add meal",
+            presentation: "modal",
+          }}
+        />
       </Stack>
     </HomeProvider>
   );

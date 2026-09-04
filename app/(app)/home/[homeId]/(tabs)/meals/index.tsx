@@ -1,9 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { GroceryView } from "../../../../../../components/meals/grocery-view";
-import { IngredientFormModal } from "../../../../../../components/meals/ingredient-form-modal";
 import { IngredientsView } from "../../../../../../components/meals/ingredients-view";
 import {
   MealsSubnav,
@@ -14,12 +13,8 @@ import {
   type MealsView,
 } from "../../../../../../components/meals/meals-view-nav";
 import { PlanView } from "../../../../../../components/meals/plan-view";
-import { RecipeFormModal } from "../../../../../../components/meals/recipe-form-modal";
 import { RecipesView } from "../../../../../../components/meals/recipes-view";
-import type {
-  Ingredient,
-  RecipeWithIngredients,
-} from "../../../../../../lib/api/meals";
+import { useHome } from "../../../../../../lib/home-context";
 import { mondayOf } from "../../../../../../lib/week";
 import { colors, TOUCH_TARGET } from "../../../../../../theme/tokens";
 
@@ -36,7 +31,6 @@ function parseTab(raw: string | undefined): MealsTab {
   if (raw === "grocery" || raw === "plan" || raw === "meals") {
     return raw;
   }
-  // Legacy deep link used "recipes" as the first section id.
   if (raw === "recipes") {
     return "meals";
   }
@@ -53,8 +47,11 @@ function parseView(raw: string | undefined): MealsView {
 /**
  * Single Meals shell: top pills (Meals / Grocery / Plan) and secondary
  * Recipes | Ingredients stay mounted; views swap via query params.
+ * Create/edit overlays are Expo Router modals under /meal/* (same as Settings).
  */
 export default function MealsShellScreen() {
+  const home = useHome();
+  const router = useRouter();
   const params = useLocalSearchParams<{
     tab?: string | string[];
     view?: string | string[];
@@ -63,44 +60,16 @@ export default function MealsShellScreen() {
   const view = parseView(paramOne(params.view));
 
   const [weekStart, setWeekStart] = useState(() => mondayOf());
-  const [recipeOpen, setRecipeOpen] = useState(false);
-  const [editingRecipe, setEditingRecipe] =
-    useState<RecipeWithIngredients | null>(null);
-  const [ingredientOpen, setIngredientOpen] = useState(false);
-  const [editingIngredient, setEditingIngredient] =
-    useState<Ingredient | null>(null);
-  const [recipesRefreshKey, setRecipesRefreshKey] = useState(0);
-  const [ingredientsRefreshKey, setIngredientsRefreshKey] = useState(0);
 
   const showHeaderPlus = tab === "meals";
 
-  const openCreateRecipe = useCallback(() => {
-    setEditingRecipe(null);
-    setRecipeOpen(true);
-  }, []);
-
-  const openEditRecipe = useCallback((recipe: RecipeWithIngredients) => {
-    setEditingRecipe(recipe);
-    setRecipeOpen(true);
-  }, []);
-
-  const openCreateIngredient = useCallback(() => {
-    setEditingIngredient(null);
-    setIngredientOpen(true);
-  }, []);
-
-  const openEditIngredient = useCallback((ingredient: Ingredient) => {
-    setEditingIngredient(ingredient);
-    setIngredientOpen(true);
-  }, []);
-
   const onHeaderPlus = useCallback(() => {
     if (view === "ingredients") {
-      openCreateIngredient();
+      router.push(`/home/${home.id}/meal/ingredient`);
     } else {
-      openCreateRecipe();
+      router.push(`/home/${home.id}/meal/recipe`);
     }
-  }, [openCreateIngredient, openCreateRecipe, view]);
+  }, [home.id, router, view]);
 
   const headerRight = useMemo(() => {
     if (!showHeaderPlus) {
@@ -133,55 +102,14 @@ export default function MealsShellScreen() {
       <MealsSubnav active={tab} />
       {tab === "meals" ? <MealsViewNav active={view} /> : null}
 
-      {tab === "meals" && view === "recipes" ? (
-        <RecipesView
-          onEdit={openEditRecipe}
-          refreshKey={recipesRefreshKey}
-        />
-      ) : null}
-      {tab === "meals" && view === "ingredients" ? (
-        <IngredientsView
-          onEdit={openEditIngredient}
-          refreshKey={ingredientsRefreshKey}
-        />
-      ) : null}
+      {tab === "meals" && view === "recipes" ? <RecipesView /> : null}
+      {tab === "meals" && view === "ingredients" ? <IngredientsView /> : null}
       {tab === "grocery" ? (
         <GroceryView weekStart={weekStart} onWeekChange={setWeekStart} />
       ) : null}
       {tab === "plan" ? (
         <PlanView weekStart={weekStart} onWeekChange={setWeekStart} />
       ) : null}
-
-      <RecipeFormModal
-        visible={recipeOpen}
-        recipe={editingRecipe}
-        onDismiss={() => {
-          setRecipeOpen(false);
-          setEditingRecipe(null);
-        }}
-        onSaved={() => {
-          setRecipeOpen(false);
-          setEditingRecipe(null);
-          setRecipesRefreshKey((n) => n + 1);
-          setIngredientsRefreshKey((n) => n + 1);
-        }}
-      />
-
-      {/* Standalone ingredient create/edit (Ingredients tab). Nested create
-          from the recipe form is owned by RecipeFormModal. */}
-      <IngredientFormModal
-        visible={ingredientOpen}
-        ingredient={editingIngredient}
-        onDismiss={() => {
-          setIngredientOpen(false);
-          setEditingIngredient(null);
-        }}
-        onSaved={() => {
-          setIngredientOpen(false);
-          setEditingIngredient(null);
-          setIngredientsRefreshKey((n) => n + 1);
-        }}
-      />
     </View>
   );
 }

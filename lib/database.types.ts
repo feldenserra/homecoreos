@@ -426,6 +426,8 @@ export type Database = {
           id: string;
           homeId: string;
           name: string;
+          ingredientId: string | null;
+          quantity: string;
           isCompleted: boolean;
           weekStartDate: string;
           createdAt: string;
@@ -434,12 +436,16 @@ export type Database = {
           id?: string;
           homeId: string;
           name: string;
+          ingredientId?: string | null;
+          quantity?: string | number;
           isCompleted?: boolean;
           weekStartDate: string;
           createdAt?: string;
         };
         Update: {
           name?: string;
+          ingredientId?: string | null;
+          quantity?: string | number;
           isCompleted?: boolean;
         };
         Relationships: [
@@ -449,6 +455,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "home";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "grocery_item_ingredient_home_fk";
+            columns: ["ingredientId", "homeId"];
+            isOneToOne: false;
+            referencedRelation: "ingredient";
+            referencedColumns: ["id", "homeId"];
           },
         ];
       };

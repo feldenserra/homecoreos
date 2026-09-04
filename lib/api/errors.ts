@@ -46,6 +46,7 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
     "That ingredient is already on this recipe.",
   grocery_item_name_length_check:
     "Grocery item must be between 1 and 120 characters.",
+  grocery_item_quantity_check: "Quantity must be greater than zero.",
   meal_plan_entry_meal_type_check: "Invalid meal type.",
   meal_plan_entry_has_meal_check:
     "Pick a recipe or enter a custom meal name.",

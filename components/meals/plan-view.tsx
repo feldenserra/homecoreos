@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
@@ -10,21 +10,16 @@ import {
   Text,
   View,
 } from "react-native";
-import { Button, Modal, Portal, TextInput } from "react-native-paper";
 import {
   ErrorText,
   LoadingScreen,
   MetaLabel,
-  Muted,
 } from "../ui";
 import { useAsync } from "../../hooks/use-async";
 import {
-  addMealPlanEntry,
   deleteMealPlanEntry,
   listMealPlanEntries,
-  listRecipesWithIngredients,
   type MealPlanEntry,
-  type RecipeWithIngredients,
 } from "../../lib/api/meals";
 import { useHome } from "../../lib/home-context";
 import {
@@ -35,14 +30,11 @@ import {
 import { sundayOf, weekDates, weekdayShort } from "../../lib/week";
 import {
   colors,
-  INPUT_FONT_SIZE,
   radius,
   shadowLift,
   TOUCH_TARGET,
 } from "../../theme/tokens";
 import { WeekNav } from "./week-nav";
-
-type SlotTarget = { date: string; mealType: MealType };
 
 type Props = {
   weekStart: string;
@@ -51,14 +43,13 @@ type Props = {
 
 /**
  * Weekly meal plan. Week state is owned by the meals shell.
+ * Slot add opens a Settings-style modal under /meal/plan-add.
  */
 export function PlanView({ weekStart, onWeekChange }: Props) {
   const home = useHome();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [slot, setSlot] = useState<SlotTarget | null>(null);
-  const [customName, setCustomName] = useState("");
-  const [pending, setPending] = useState(false);
 
   const weekEnd = sundayOf(weekStart);
   const days = useMemo(() => weekDates(weekStart), [weekStart]);
@@ -67,15 +58,10 @@ export function PlanView({ weekStart, onWeekChange }: Props) {
     async () => await listMealPlanEntries(home.id, weekStart, weekEnd),
     [home.id, weekStart, weekEnd],
   );
-  const recipesState = useAsync(
-    async () => await listRecipesWithIngredients(home.id),
-    [home.id],
-  );
 
   useFocusEffect(
     useCallback(() => {
       void planState.refresh();
-      void recipesState.refresh();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [home.id, weekStart]),
   );
@@ -94,63 +80,14 @@ export function PlanView({ weekStart, onWeekChange }: Props) {
     return map;
   }, [days, planState.data]);
 
-  const openAdd = useCallback((date: string, mealType: MealType) => {
-    setError(null);
-    setCustomName("");
-    setSlot({ date, mealType });
-  }, []);
-
-  const closeAdd = useCallback(() => {
-    setSlot(null);
-    setCustomName("");
-  }, []);
-
-  const addRecipe = useCallback(
-    async (recipe: RecipeWithIngredients) => {
-      if (!slot) {
-        return;
-      }
-      setError(null);
-      setPending(true);
-      try {
-        const entry = await addMealPlanEntry({
-          homeId: home.id,
-          date: slot.date,
-          mealType: slot.mealType,
-          recipeId: recipe.id,
-        });
-        planState.setData([...(planState.data ?? []), entry]);
-        closeAdd();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not add meal.");
-      } finally {
-        setPending(false);
-      }
+  const openAdd = useCallback(
+    (date: string, mealType: MealType) => {
+      router.push(
+        `/home/${home.id}/meal/plan-add?date=${encodeURIComponent(date)}&mealType=${mealType}`,
+      );
     },
-    [closeAdd, home.id, planState, slot],
+    [home.id, router],
   );
-
-  const addCustom = useCallback(async () => {
-    if (!slot || !customName.trim()) {
-      return;
-    }
-    setError(null);
-    setPending(true);
-    try {
-      const entry = await addMealPlanEntry({
-        homeId: home.id,
-        date: slot.date,
-        mealType: slot.mealType,
-        customName: customName.trim(),
-      });
-      planState.setData([...(planState.data ?? []), entry]);
-      closeAdd();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add meal.");
-    } finally {
-      setPending(false);
-    }
-  }, [closeAdd, customName, home.id, planState, slot]);
 
   const remove = useCallback(
     async (entry: MealPlanEntry) => {
@@ -197,8 +134,6 @@ export function PlanView({ weekStart, onWeekChange }: Props) {
   if (planState.loading && !planState.data) {
     return <LoadingScreen />;
   }
-
-  const recipes = recipesState.data ?? [];
 
   return (
     <View style={styles.root}>
@@ -268,72 +203,6 @@ export function PlanView({ weekStart, onWeekChange }: Props) {
           );
         })}
       </ScrollView>
-
-      <Portal>
-        <Modal
-          visible={slot !== null}
-          onDismiss={closeAdd}
-          contentContainerStyle={styles.sheet}
-        >
-          {slot ? (
-            <>
-              <Text style={styles.sheetTitle}>
-                Add · {MEAL_TYPE_LABELS[slot.mealType]} · {slot.date.slice(5)}
-              </Text>
-
-              <MetaLabel>From recipes</MetaLabel>
-              <ScrollView
-                style={styles.recipeList}
-                keyboardShouldPersistTaps="handled"
-              >
-                {recipes.length === 0 ? (
-                  <Muted>No recipes yet.</Muted>
-                ) : (
-                  recipes.map((recipe) => (
-                    <Pressable
-                      key={recipe.id}
-                      accessibilityRole="button"
-                      disabled={pending}
-                      onPress={() => void addRecipe(recipe)}
-                      style={({ pressed }) => [
-                        styles.recipeRow,
-                        pressed && styles.recipeRowPressed,
-                      ]}
-                    >
-                      <Text style={styles.recipeName} numberOfLines={1}>
-                        {recipe.name}
-                      </Text>
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
-
-              <MetaLabel>Or custom name</MetaLabel>
-              <TextInput
-                mode="outlined"
-                dense
-                value={customName}
-                onChangeText={setCustomName}
-                placeholder="Leftovers"
-                maxLength={120}
-                style={styles.input}
-              />
-              <ErrorText>{error}</ErrorText>
-              <Button
-                mode="contained"
-                loading={pending}
-                disabled={pending || !customName.trim()}
-                onPress={() => void addCustom()}
-              >
-                Add custom meal
-              </Button>
-              <Button mode="text" onPress={closeAdd}>
-                Cancel
-              </Button>
-            </>
-          ) : null}
-        </Modal>
-      </Portal>
     </View>
   );
 }
@@ -397,44 +266,5 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 14,
     fontWeight: "600",
-  },
-  sheet: {
-    marginHorizontal: 20,
-    maxHeight: "85%",
-    padding: 20,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
-    gap: 10,
-    ...shadowLift,
-  },
-  sheetTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  recipeList: {
-    maxHeight: 180,
-  },
-  recipeRow: {
-    minHeight: TOUCH_TARGET,
-    justifyContent: "center",
-    paddingHorizontal: 10,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    marginBottom: 6,
-    backgroundColor: colors.paper,
-  },
-  recipeRowPressed: {
-    backgroundColor: colors.claySoft,
-  },
-  recipeName: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  input: {
-    fontSize: INPUT_FONT_SIZE,
-    backgroundColor: colors.surface,
   },
 });

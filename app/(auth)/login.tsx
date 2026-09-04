@@ -11,11 +11,13 @@ import {
   Wordmark,
 } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
+import { isLocal } from "../../lib/is-local";
 import { colors, INPUT_FONT_SIZE, TOUCH_TARGET } from "../../theme/tokens";
 
 /** Replaces app/login/page.tsx and login-form.tsx. */
 export default function LoginScreen() {
   const { signIn, signInWithGitHub } = useAuth();
+  const showGitHub = !isLocal();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +64,11 @@ export default function LoginScreen() {
 
         <View style={styles.block}>
           <DisplayTitle size={24}>Sign in</DisplayTitle>
-          <Muted>Email and password, or continue with GitHub.</Muted>
+          <Muted>
+            {showGitHub
+              ? "Email and password, or continue with GitHub."
+              : "Email and password."}
+          </Muted>
         </View>
 
         <View style={styles.form}>
@@ -118,27 +124,31 @@ export default function LoginScreen() {
           </Button>
         </Link>
 
-        <View style={styles.dividerRow}>
-          <Divider style={styles.divider} />
-          <Text style={styles.dividerLabel}>or</Text>
-          <Divider style={styles.divider} />
-        </View>
+        {showGitHub ? (
+          <>
+            <View style={styles.dividerRow}>
+              <Divider style={styles.divider} />
+              <Text style={styles.dividerLabel}>or</Text>
+              <Divider style={styles.divider} />
+            </View>
 
-        <Button
-          mode="outlined"
-          onPress={github}
-          disabled={pending}
-          style={styles.button}
-          icon={() => (
-            <MaterialCommunityIcons
-              name="github"
-              size={18}
-              color={colors.ink}
-            />
-          )}
-        >
-          Continue with GitHub
-        </Button>
+            <Button
+              mode="outlined"
+              onPress={github}
+              disabled={pending}
+              style={styles.button}
+              icon={() => (
+                <MaterialCommunityIcons
+                  name="github"
+                  size={18}
+                  color={colors.ink}
+                />
+              )}
+            >
+              Continue with GitHub
+            </Button>
+          </>
+        ) : null}
       </Screen>
     </KeyboardAvoidingView>
   );

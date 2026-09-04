@@ -48,7 +48,8 @@ double_confirm_changes = true
 enable_confirmations = false
 
 [auth.external.github]
-enabled = true
+# Local CLI / self-host: leave off. Enable only against cloud with OAuth apps.
+enabled = false
 client_id = "env(SUPABASE_AUTH_GITHUB_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_GITHUB_SECRET)"
 redirect_uri = ""

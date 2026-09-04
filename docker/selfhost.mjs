@@ -229,6 +229,8 @@ function initFresh() {
   setEnvKey(envPath, "SUPABASE_PUBLIC_URL", "http://localhost:8000");
   setEnvKey(envPath, "API_EXTERNAL_URL", "http://localhost:8000/auth/v1");
   setEnvKey(envPath, "SITE_URL", "http://localhost:8081");
+  // No mail container in this compose stack — autoconfirm so signup works.
+  setEnvKey(envPath, "ENABLE_EMAIL_AUTOCONFIRM", "true");
 
   console.log("==> Generating secrets (generate-keys.sh)");
   run("sh", ["utils/generate-keys.sh", "--update-env"], { cwd: projectDir });
@@ -349,6 +351,7 @@ function printAppEnv() {
   console.log("---");
   console.log(`EXPO_PUBLIC_SUPABASE_URL=${url}`);
   console.log(`EXPO_PUBLIC_SUPABASE_ANON_KEY=${anon}`);
+  console.log("EXPO_PUBLIC_IS_LOCAL=true");
   console.log("---");
   console.log(
     "(CHAT_CONTENT_ENCRYPTION_KEY stays in docker/supabase-project/.env — not in the app binary.)",
@@ -357,8 +360,13 @@ function printAppEnv() {
 
 function commission() {
   ensureInit();
+  // Existing installs: ensure autoconfirm without requiring re-init.
+  const { envPath } = readProjectEnv();
+  setEnvKey(envPath, "ENABLE_EMAIL_AUTOCONFIRM", "true");
   up();
   applyMigrations();
+  console.log("==> Restarting auth so ENABLE_EMAIL_AUTOCONFIRM is live");
+  compose(["up", "-d", "--force-recreate", "auth"]);
   console.log("==> Restarting functions so mounts/secrets are current");
   compose(["up", "-d", "--force-recreate", "functions"]);
   printAppEnv();

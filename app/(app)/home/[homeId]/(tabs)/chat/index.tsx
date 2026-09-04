@@ -105,7 +105,7 @@ export default function ChatListScreen() {
             >
               <MaterialCommunityIcons
                 name="plus"
-                size={22}
+                size={20}
                 color={colors.ink}
               />
             </Pressable>
@@ -187,10 +187,10 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   newChatButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.claySoft,

@@ -5,14 +5,16 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { HOME_APPS, type HomeApp, type HomeAppId } from "../../lib/home-apps";
 import { colors, shadowLift } from "../../theme/tokens";
 
 const ITEM_SIZE = 64;
-const SPRING = { damping: 18, stiffness: 220 };
+const SNAP_MS = 150;
+const SWIPE_DISTANCE = 28;
+const SWIPE_VELOCITY = 400;
 
 type AppSwitcherArcProps = {
   open: boolean;
@@ -32,9 +34,9 @@ function wrapDelta(delta: number, count: number): number {
   return wrapped;
 }
 
-function nearestIndex(offset: number, length: number): number {
+function wrapIndex(value: number, length: number): number {
   "worklet";
-  const mod = ((Math.round(offset) % length) + length) % length;
+  const mod = ((Math.round(value) % length) + length) % length;
   return mod;
 }
 
@@ -73,7 +75,7 @@ function ArcItem({
   });
 
   const handlePress = () => {
-    const apexIndex = nearestIndex(offset.value, count);
+    const apexIndex = wrapIndex(offset.value, count);
     onActivate(app, apexIndex === index);
   };
 
@@ -115,24 +117,23 @@ export function AppSwitcherArc({
       apps.findIndex((app) => app.id === activeAppId),
     ),
   );
-  const dragStart = useSharedValue(0);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     const index = apps.findIndex((app) => app.id === activeAppId);
-    // Shared values are intentionally mutable; that is the Reanimated API.
+    // Instant open — no spring. Shared values are intentionally mutable.
     // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-    offset.value = withSpring(index >= 0 ? index : 0, SPRING);
+    offset.value = index >= 0 ? index : 0;
   }, [activeAppId, apps, offset, open]);
 
   const rotateToIndex = useCallback(
     (index: number) => {
       // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-      offset.value = withSpring(index, SPRING);
+      offset.value = withTiming(wrapIndex(index, count), { duration: SNAP_MS });
     },
-    [offset],
+    [count, offset],
   );
 
   const handleActivate = useCallback(
@@ -149,21 +150,23 @@ export function AppSwitcherArc({
     [apps, onSelect, rotateToIndex],
   );
 
+  // Discrete ±1 snap: no free-spin drag follow. One swipe → next/prev app.
   // oxlint-disable-next-line react/capitalized-calls -- Gesture.Pan is a factory, not a component
-  const pan = Gesture.Pan()
-    .onBegin(() => {
-      // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-      dragStart.value = offset.value;
-    })
-    .onUpdate((event) => {
-      // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-      offset.value = dragStart.value - event.translationX / 72;
-    })
-    .onEnd((event) => {
-      const projected = offset.value - event.velocityX / 800;
-      // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-      offset.value = withSpring(nearestIndex(projected, count), SPRING);
+  const pan = Gesture.Pan().onEnd((event) => {
+    const current = wrapIndex(offset.value, count);
+    const stepped =
+      event.translationX <= -SWIPE_DISTANCE ||
+      event.velocityX <= -SWIPE_VELOCITY
+        ? 1
+        : event.translationX >= SWIPE_DISTANCE ||
+            event.velocityX >= SWIPE_VELOCITY
+          ? -1
+          : 0;
+    // eslint-disable-next-line react/immutability -- Reanimated SharedValue
+    offset.value = withTiming(wrapIndex(current + stepped, count), {
+      duration: SNAP_MS,
     });
+  });
 
   if (!open) {
     return null;
@@ -201,7 +204,7 @@ export function AppSwitcherArc({
               />
             ))}
           </View>
-          <Text style={styles.hint}>Swipe to rotate · tap top to open</Text>
+          <Text style={styles.hint}>Swipe to switch · tap top to open</Text>
         </View>
       </GestureDetector>
     </View>

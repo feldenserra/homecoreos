@@ -223,6 +223,7 @@ export function KanbanBoard({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.pillsScroll}
         contentContainerStyle={styles.pills}
       >
         {TASK_STATUSES.map((status) => {
@@ -508,8 +509,12 @@ function Column({
 
 const styles = StyleSheet.create({
   root: { flex: 1, gap: 8 },
+  pillsScroll: {
+    flexGrow: 0,
+  },
   pills: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     paddingBottom: 4,
@@ -517,10 +522,12 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+    height: 36,
     gap: 6,
-    minHeight: 34,
-    paddingHorizontal: 12,
-    borderRadius: 17,
+    paddingHorizontal: 14,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,

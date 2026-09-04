@@ -2,37 +2,31 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius } from "../../theme/tokens";
 
-export type MealsTab = "meals" | "grocery" | "plan";
+export type MealsView = "recipes" | "ingredients";
 
-const SECTIONS: { id: MealsTab; label: string }[] = [
-  { id: "meals", label: "Meals" },
-  { id: "grocery", label: "Grocery" },
-  { id: "plan", label: "Plan" },
+const VIEWS: { id: MealsView; label: string }[] = [
+  { id: "recipes", label: "Recipes" },
+  { id: "ingredients", label: "Ingredients" },
 ];
 
 /**
- * Top-level segmented control for Meals / Grocery / Plan. Updates query
- * params on the single `/meals` shell so the layout does not remount.
+ * Secondary pills under the Meals tab: Recipes | Ingredients.
  */
-export function MealsSubnav({ active }: { active: MealsTab }) {
+export function MealsViewNav({ active }: { active: MealsView }) {
   return (
     <View style={styles.row}>
-      {SECTIONS.map((section) => {
-        const selected = section.id === active;
+      {VIEWS.map((view) => {
+        const selected = view.id === active;
         return (
           <Pressable
-            key={section.id}
+            key={view.id}
             accessibilityRole="button"
             accessibilityState={{ selected }}
             onPress={() => {
               if (selected) {
                 return;
               }
-              if (section.id === "meals") {
-                router.setParams({ tab: "meals", view: "recipes" });
-              } else {
-                router.setParams({ tab: section.id });
-              }
+              router.setParams({ tab: "meals", view: view.id });
             }}
             style={({ pressed }) => [
               styles.chip,
@@ -41,7 +35,7 @@ export function MealsSubnav({ active }: { active: MealsTab }) {
             ]}
           >
             <Text style={[styles.label, selected && styles.labelActive]}>
-              {section.label}
+              {view.label}
             </Text>
           </Pressable>
         );
@@ -55,14 +49,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 4,
   },
   chip: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 36,
+    minHeight: 32,
     borderRadius: radius.md,
     backgroundColor: colors.paper2,
     borderWidth: 1,
@@ -77,7 +71,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
   },
   labelActive: {

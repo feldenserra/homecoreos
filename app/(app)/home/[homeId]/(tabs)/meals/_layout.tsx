@@ -2,19 +2,16 @@ import { Stack } from "expo-router";
 import { navScreenOptions } from "../../../../../../theme/paper-theme";
 
 /**
- * Meals is a stack inside the Meals tab: Recipes / Grocery / Plan share the
- * tab bar, and create-recipe is a modal over Recipes.
+ * Meals is a single shell screen under the Meals tab. Grocery / Plan /
+ * create-recipe file routes redirect into query params on index.
  */
 export default function MealsLayout() {
   return (
     <Stack screenOptions={{ ...navScreenOptions, headerShown: true }}>
       <Stack.Screen name="index" options={{ title: "Meals" }} />
-      <Stack.Screen name="grocery" options={{ title: "Grocery" }} />
-      <Stack.Screen name="plan" options={{ title: "Meal plan" }} />
-      <Stack.Screen
-        name="create-recipe"
-        options={{ title: "New recipe", presentation: "modal" }}
-      />
+      <Stack.Screen name="grocery" options={{ headerShown: false }} />
+      <Stack.Screen name="plan" options={{ headerShown: false }} />
+      <Stack.Screen name="create-recipe" options={{ headerShown: false }} />
     </Stack>
   );
 }

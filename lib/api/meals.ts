@@ -83,6 +83,19 @@ function numericOrNull(
 // Ingredients
 // ---------------------------------------------------------------------------
 
+export async function listIngredients(homeId: string): Promise<Ingredient[]> {
+  const { data, error } = await supabase
+    .from("ingredient")
+    .select("*")
+    .eq("homeId", homeId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(messageFromError(error, "Could not load ingredients."));
+  }
+  return data as Ingredient[];
+}
+
 export async function searchIngredients(
   homeId: string,
   query: string,
@@ -133,6 +146,70 @@ export async function createIngredient(input: {
     throw new Error(messageFromError(error, "Could not add ingredient."));
   }
   return data as Ingredient;
+}
+
+export async function updateIngredient(input: {
+  homeId: string;
+  ingredientId: string;
+  name: string;
+  servingSizeGrams?: number | string | null;
+  calories?: number | string | null;
+  carbsGrams?: number | string | null;
+  fatsGrams?: number | string | null;
+  proteinGrams?: number | string | null;
+}): Promise<Ingredient> {
+  const { data, error } = await supabase
+    .from("ingredient")
+    .update({
+      name: input.name.trim(),
+      servingSizeGrams: numericOrNull(input.servingSizeGrams),
+      calories: numericOrNull(input.calories),
+      carbsGrams: numericOrNull(input.carbsGrams),
+      fatsGrams: numericOrNull(input.fatsGrams),
+      proteinGrams: numericOrNull(input.proteinGrams),
+    })
+    .eq("id", input.ingredientId)
+    .eq("homeId", input.homeId)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(messageFromError(error, "Could not update ingredient."));
+  }
+  return data as Ingredient;
+}
+
+export async function countIngredientRecipeUses(input: {
+  homeId: string;
+  ingredientId: string;
+}): Promise<number> {
+  const { count, error } = await supabase
+    .from("recipe_ingredient")
+    .select("id", { count: "exact", head: true })
+    .eq("homeId", input.homeId)
+    .eq("ingredientId", input.ingredientId);
+
+  if (error) {
+    throw new Error(
+      messageFromError(error, "Could not check ingredient usage."),
+    );
+  }
+  return count ?? 0;
+}
+
+export async function deleteIngredient(input: {
+  homeId: string;
+  ingredientId: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("ingredient")
+    .delete()
+    .eq("id", input.ingredientId)
+    .eq("homeId", input.homeId);
+
+  if (error) {
+    throw new Error(messageFromError(error, "Could not delete ingredient."));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +271,59 @@ export async function createRecipe(input: {
         .delete()
         .eq("id", recipe.id)
         .eq("homeId", input.homeId);
+      throw new Error(
+        messageFromError(linesError, "Could not save recipe ingredients."),
+      );
+    }
+  }
+
+  return recipe as Recipe;
+}
+
+export async function updateRecipe(input: {
+  homeId: string;
+  recipeId: string;
+  name: string;
+  lines: { ingredientId: string; quantity: number }[];
+}): Promise<Recipe> {
+  const { data: recipe, error: recipeError } = await supabase
+    .from("recipe")
+    .update({ name: input.name.trim() })
+    .eq("id", input.recipeId)
+    .eq("homeId", input.homeId)
+    .select("*")
+    .single();
+
+  if (recipeError || !recipe) {
+    throw new Error(messageFromError(recipeError, "Could not update recipe."));
+  }
+
+  const { error: deleteLinesError } = await supabase
+    .from("recipe_ingredient")
+    .delete()
+    .eq("recipeId", input.recipeId)
+    .eq("homeId", input.homeId);
+
+  if (deleteLinesError) {
+    throw new Error(
+      messageFromError(
+        deleteLinesError,
+        "Could not update recipe ingredients.",
+      ),
+    );
+  }
+
+  if (input.lines.length > 0) {
+    const { error: linesError } = await supabase.from("recipe_ingredient").insert(
+      input.lines.map((line) => ({
+        recipeId: input.recipeId,
+        ingredientId: line.ingredientId,
+        homeId: input.homeId,
+        quantity: String(line.quantity),
+      })),
+    );
+
+    if (linesError) {
       throw new Error(
         messageFromError(linesError, "Could not save recipe ingredients."),
       );

@@ -3,6 +3,7 @@ import { Link, router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Card,
   DisplayTitle,
@@ -17,7 +18,7 @@ import { useAsync } from "../../../hooks/use-async";
 import { getHomeQuota, listHomes } from "../../../lib/api/homes";
 import { useAuth } from "../../../lib/auth-context";
 import { formatHomeCode, MAX_CREATED_HOMES, MAX_JOINED_HOMES } from "../../../lib/home-code";
-import { colors, radius, TOUCH_TARGET } from "../../../theme/tokens";
+import { colors, gutter, radius, TOUCH_TARGET } from "../../../theme/tokens";
 
 /**
  * "Which house?" — the home picker. Replaces app/app/page.tsx and home-gate.tsx.
@@ -32,6 +33,7 @@ import { colors, radius, TOUCH_TARGET } from "../../../theme/tokens";
  */
 export default function HomesScreen() {
   const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const state = useAsync(
     async () => {
@@ -60,7 +62,7 @@ export default function HomesScreen() {
   const remainingJoins = Math.max(0, MAX_JOINED_HOMES - quota.joinedCount);
 
   return (
-    <Screen scroll style={styles.screen}>
+    <Screen scroll style={[styles.screen, { paddingTop: insets.top + gutter.compact }]}>
       <View style={styles.header}>
         <Wordmark />
         <DisplayTitle size={32}>Which house?</DisplayTitle>

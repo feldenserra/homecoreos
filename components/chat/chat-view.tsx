@@ -18,6 +18,19 @@ import {
   type ChatMessageRow,
 } from "../../lib/api/chat";
 import {
+  beginChatStream,
+  canAdoptChatStream,
+  clearChatStreamHandoff,
+  finishChatStream,
+  getChatStreamSnapshot,
+  releaseChatStreamOwner,
+  setChatStreamConversationId,
+  setChatStreamError,
+  subscribeChatStream,
+  updateChatStreamMessages,
+  type ChatUiMessage,
+} from "../../lib/chat-stream-session";
+import {
   DEFAULT_SYSTEM_PROMPT,
   MAX_SYSTEM_PROMPT_LENGTH,
 } from "../../lib/chat-prompt";
@@ -42,18 +55,14 @@ import { ErrorText, LoadingScreen, MetaLabel, Muted } from "../ui";
  *
  *  - A conversation is created implicitly by the first send. When
  *    `conversationId` is absent the chat function inserts one and reports the id
- *    back on the `meta` frame, at which point we swap the URL. That is exactly
- *    what the web version did; it just did it with router.replace on the same
- *    component.
+ *    back on the `meta` frame, at which point we swap the URL. On native that
+ *    remounts this component; live stream state lives in chat-stream-session so
+ *    the SSE is not aborted mid-handoff.
  *  - The provider locks on first message. Once a thread has history, the model
  *    picker disappears, because the function refuses to switch a locked chat.
  */
 
-type UiMessage = {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-};
+type UiMessage = ChatUiMessage;
 
 function keyLabel(key: AiKeyListItem): string {
   const provider = AI_KEY_SOURCE_LABELS[key.source];
@@ -71,16 +80,33 @@ export function ChatView({
   homeId: string;
   conversationId?: string;
 }) {
-  const [messages, setMessages] = useState<UiMessage[]>([]);
-  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
-  const [aiSource, setAiSource] = useState<AiKeySource | null>(null);
-  const [aiModel, setAiModel] = useState<string | null>(null);
+  const adopted = canAdoptChatStream(homeId, conversationId);
+  const initialSession = adopted ? getChatStreamSnapshot() : null;
+
+  const [messages, setMessages] = useState<UiMessage[]>(
+    () => initialSession?.messages ?? [],
+  );
+  const [systemPrompt, setSystemPrompt] = useState(
+    () => initialSession?.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
+  );
+  const [aiSource, setAiSource] = useState<AiKeySource | null>(
+    () => initialSession?.aiSource ?? null,
+  );
+  const [aiModel, setAiModel] = useState<string | null>(
+    () => initialSession?.aiModel ?? null,
+  );
   const [keys, setKeys] = useState<AiKeyListItem[]>([]);
   const [promptOpen, setPromptOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [loading, setLoading] = useState(Boolean(conversationId));
-  const [error, setError] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState(
+    () => initialSession?.streaming ?? false,
+  );
+  const [loading, setLoading] = useState(
+    () => Boolean(conversationId) && !adopted,
+  );
+  const [error, setError] = useState<string | null>(
+    () => initialSession?.error ?? null,
+  );
 
   const scrollRef = useRef<ScrollView | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -91,8 +117,53 @@ export function ChatView({
     input.trim() && !streaming && (chatLocked || aiSource),
   );
 
+  // Keep UI subscribed to the live stream after /new → /[id] remount.
+  // Initial message/streaming state is already seeded from the session above.
+  useEffect(() => {
+    if (!canAdoptChatStream(homeId, conversationId)) {
+      return;
+    }
+
+    clearChatStreamHandoff();
+
+    return subscribeChatStream((next) => {
+      if (next.homeId !== homeId) {
+        return;
+      }
+      if (
+        conversationId &&
+        next.conversationId &&
+        next.conversationId !== conversationId
+      ) {
+        return;
+      }
+      setMessages(next.messages);
+      setStreaming(next.streaming);
+      setError(next.error);
+      setSystemPrompt(next.systemPrompt);
+      setAiSource(next.aiSource);
+      setAiModel(next.aiModel);
+    });
+  }, [homeId, conversationId]);
+
   useEffect(() => {
     let active = true;
+
+    // Live handoff: skip the blank reload that would wipe streaming tokens.
+    if (canAdoptChatStream(homeId, conversationId)) {
+      void listAiKeys()
+        .then((loadedKeys) => {
+          if (active) {
+            setKeys(loadedKeys);
+          }
+        })
+        .catch(() => {
+          /* keys are optional once a thread is locked */
+        });
+      return () => {
+        active = false;
+      };
+    }
 
     void (async () => {
       try {
@@ -135,15 +206,21 @@ export function ChatView({
     };
   }, [homeId, conversationId]);
 
-  // Cancel an in-flight stream if the screen goes away. The Edge Function
-  // persists the reply regardless, via EdgeRuntime.waitUntil.
-  useEffect(() => () => abortRef.current?.abort(), []);
+  // Cancel an in-flight stream only when leaving the thread for real — not
+  // during the Expo remount that follows first-message meta handoff.
+  useEffect(
+    () => () => {
+      releaseChatStreamOwner(homeId, conversationId);
+      abortRef.current = null;
+    },
+    [homeId, conversationId],
+  );
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   }, []);
 
-  useEffect(scrollToEnd, [messages.length, scrollToEnd]);
+  useEffect(scrollToEnd, [messages, scrollToEnd]);
 
   const send = useCallback(async () => {
     const message = input.trim();
@@ -160,16 +237,34 @@ export function ChatView({
     const localUserId = `local-user-${Date.now()}`;
     const localAssistantId = `local-assistant-${Date.now()}`;
 
-    setMessages((current) => [
-      ...current,
+    const nextMessages: UiMessage[] = [
+      ...messages,
       { id: localUserId, role: "user", content: message },
       { id: localAssistantId, role: "assistant", content: "" },
-    ]);
+    ];
+    setMessages(nextMessages);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
+    beginChatStream({
+      homeId,
+      conversationId: conversationId ?? null,
+      messages: nextMessages,
+      systemPrompt,
+      aiSource,
+      aiModel,
+      abort: controller,
+    });
+
     let assistantText = "";
+    let workingMessages = nextMessages;
+
+    const pushMessages = (updater: (current: UiMessage[]) => UiMessage[]) => {
+      workingMessages = updater(workingMessages);
+      setMessages(workingMessages);
+      updateChatStreamMessages(workingMessages);
+    };
 
     try {
       await streamChat(
@@ -182,7 +277,7 @@ export function ChatView({
         },
         {
           onMeta: (meta) => {
-            setMessages((current) =>
+            pushMessages((current) =>
               current.map((entry) =>
                 entry.id === localUserId
                   ? { ...entry, id: meta.userMessageId }
@@ -191,7 +286,10 @@ export function ChatView({
             );
 
             // First send on a brand-new thread: adopt the id the server made.
+            // Mark handoff before replace so the unmounting /new screen does
+            // not abort the still-running stream.
             if (!conversationId) {
+              setChatStreamConversationId(meta.conversationId);
               router.replace(
                 `/home/${homeId}/chat/${meta.conversationId}`,
               );
@@ -199,7 +297,7 @@ export function ChatView({
           },
           onDelta: (text) => {
             assistantText += text;
-            setMessages((current) =>
+            pushMessages((current) =>
               current.map((entry) =>
                 entry.id === localAssistantId
                   ? { ...entry, content: assistantText }
@@ -209,7 +307,7 @@ export function ChatView({
             scrollToEnd();
           },
           onDone: (done) => {
-            setMessages((current) =>
+            pushMessages((current) =>
               current.map((entry) =>
                 entry.id === localAssistantId
                   ? { ...entry, id: done.assistantMessageId }
@@ -217,27 +315,36 @@ export function ChatView({
               ),
             );
           },
-          onError: (detail) => setError(detail),
+          onError: (detail) => {
+            setError(detail);
+            setChatStreamError(detail);
+          },
         },
         controller.signal,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send message.");
+      const detail =
+        err instanceof Error ? err.message : "Could not send message.";
+      setError(detail);
+      setChatStreamError(detail);
       // Drop the empty assistant bubble so the thread does not show a blank turn.
-      setMessages((current) =>
+      pushMessages((current) =>
         current.filter(
           (entry) => entry.id !== localAssistantId || entry.content.length > 0,
         ),
       );
     } finally {
+      finishChatStream(workingMessages);
       setStreaming(false);
       abortRef.current = null;
     }
   }, [
+    aiModel,
     aiSource,
     conversationId,
     homeId,
     input,
+    messages,
     scrollToEnd,
     streaming,
     systemPrompt,

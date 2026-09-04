@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { Button, IconButton } from "react-native-paper";
+import { Button } from "react-native-paper";
 import {
   ErrorText,
   LoadingScreen,
@@ -93,11 +93,22 @@ export default function ChatListScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <IconButton
-              icon="plus"
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="New chat"
               onPress={() => router.push(`/home/${home.id}/chat/new`)}
-            />
+              style={({ pressed }) => [
+                styles.newChatButton,
+                pressed && styles.newChatButtonPressed,
+              ]}
+              hitSlop={8}
+            >
+              <MaterialCommunityIcons
+                name="plus"
+                size={22}
+                color={colors.ink}
+              />
+            </Pressable>
           ),
         }}
       />
@@ -174,6 +185,18 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     width: "100%",
     alignSelf: "center",
+  },
+  newChatButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.claySoft,
+  },
+  newChatButtonPressed: {
+    opacity: 0.7,
   },
   empty: { gap: 12, alignItems: "flex-start" },
   list: { gap: 8 },

@@ -1,7 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,6 +29,8 @@ import {
   TOUCH_TARGET,
 } from "../../theme/tokens";
 import { ErrorText, MetaLabel } from "../ui";
+
+const COLUMN_GAP = 12;
 
 /**
  * The shared task board. Replaces components/kanban/kanban-board.tsx.
@@ -94,15 +98,50 @@ export function KanbanBoard({
 }) {
   const { width } = useWindowDimensions();
   const groups = useMemo(() => groupByStatus(tasks), [tasks]);
+  const columnsRef = useRef<ScrollView | null>(null);
 
   const [picked, setPicked] = useState<Task | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<TaskStatus>(TASK_STATUSES[0]);
 
   // Column width: full-bleed pager on phones, three-ish columns on a wide web
   // viewport where there is room for them.
   const columnWidth = width >= 900 ? 320 : width - 32;
+  const columnStride = columnWidth + COLUMN_GAP;
+
+  const syncActiveFromOffset = useCallback(
+    (offsetX: number) => {
+      const index = Math.round(offsetX / columnStride);
+      const clamped = Math.max(0, Math.min(TASK_STATUSES.length - 1, index));
+      const next = TASK_STATUSES[clamped];
+      setActiveStatus((current) => (current === next ? current : next));
+    },
+    [columnStride],
+  );
+
+  const onColumnsScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      syncActiveFromOffset(event.nativeEvent.contentOffset.x);
+    },
+    [syncActiveFromOffset],
+  );
+
+  const scrollToStatus = useCallback(
+    (status: TaskStatus) => {
+      const index = TASK_STATUSES.indexOf(status);
+      if (index < 0) {
+        return;
+      }
+      setActiveStatus(status);
+      columnsRef.current?.scrollTo({
+        x: index * columnStride,
+        animated: true,
+      });
+    },
+    [columnStride],
+  );
 
   const move = useCallback(
     async (task: Task, status: TaskStatus) => {
@@ -183,11 +222,49 @@ export function KanbanBoard({
 
       <ScrollView
         horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.pills}
+      >
+        {TASK_STATUSES.map((status) => {
+          const active = activeStatus === status;
+          return (
+            <Pressable
+              key={status}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => scrollToStatus(status)}
+              style={({ pressed }) => [
+                styles.pill,
+                active && styles.pillActive,
+                active && { borderColor: statusColors[status] },
+                pressed && styles.pillPressed,
+              ]}
+            >
+              <View
+                style={[
+                  styles.pillDot,
+                  { backgroundColor: statusColors[status] },
+                ]}
+              />
+              <Text style={[styles.pillLabel, active && styles.pillLabelActive]}>
+                {COLUMN_LABELS[status]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <ScrollView
+        ref={columnsRef}
+        horizontal
         pagingEnabled={columnWidth >= width - 32}
-        snapToInterval={columnWidth + 12}
+        snapToInterval={columnStride}
         decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.columns}
+        onScroll={onColumnsScroll}
+        onMomentumScrollEnd={onColumnsScroll}
+        scrollEventThrottle={16}
       >
         {TASK_STATUSES.map((status) => (
           <Column
@@ -431,8 +508,44 @@ function Column({
 
 const styles = StyleSheet.create({
   root: { flex: 1, gap: 8 },
+  pills: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  pillActive: {
+    backgroundColor: colors.claySoft,
+  },
+  pillPressed: {
+    opacity: 0.7,
+  },
+  pillDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  pillLabel: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  pillLabelActive: {
+    color: colors.ink,
+  },
   columns: {
-    gap: 12,
+    gap: COLUMN_GAP,
     paddingHorizontal: 16,
     paddingBottom: 8,
   },

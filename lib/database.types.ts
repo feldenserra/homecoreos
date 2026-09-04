@@ -36,6 +36,7 @@ type TaskRow = {
   status: string;
   position: number;
   createdByUserId: string;
+  assignedToUserId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,6 +137,7 @@ export type Database = {
           status?: string;
           position?: number;
           createdByUserId?: string;
+          assignedToUserId?: string | null;
           createdAt?: string;
           updatedAt?: string;
         };
@@ -146,6 +148,7 @@ export type Database = {
           description?: string | null;
           status?: string;
           position?: number;
+          assignedToUserId?: string | null;
           updatedAt?: string;
         };
         Relationships: [
@@ -162,6 +165,20 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "user";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_assignedToUserId_user_id_fk";
+            columns: ["assignedToUserId"];
+            isOneToOne: false;
+            referencedRelation: "user";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_assignee_home_member_fk";
+            columns: ["homeId", "assignedToUserId"];
+            isOneToOne: false;
+            referencedRelation: "home_member";
+            referencedColumns: ["homeId", "userId"];
           },
         ];
       };
@@ -339,6 +356,10 @@ export type Database = {
       user_joined_home_count: {
         Args: Record<PropertyKey, never>;
         Returns: number;
+      };
+      shares_home_with: {
+        Args: { p_user_id: string };
+        Returns: boolean;
       };
     };
 

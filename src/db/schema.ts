@@ -147,6 +147,13 @@ export const tasks = pgTable(
       .notNull()
       .default(sql`auth.uid()`)
       .references(() => users.id, { onDelete: "cascade" }),
+    /**
+     * Optional housemate. The composite FK below is what actually requires
+     * membership — this one is so PostgREST can embed `user(...)`.
+     */
+    assignedToUserId: uuid("assignedToUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
   },
@@ -156,6 +163,15 @@ export const tasks = pgTable(
       table.status,
       table.position,
     ),
+    /**
+     * MATCH SIMPLE: a null assignee skips the check. Leaving the house
+     * (`home_member` row deleted) clears the assignment.
+     */
+    foreignKey({
+      name: "task_assignee_home_member_fk",
+      columns: [table.homeId, table.assignedToUserId],
+      foreignColumns: [homeMembers.homeId, homeMembers.userId],
+    }).onDelete("set null"),
     check(
       "task_status_check",
       sql`${table.status} in ('not_started', 'in_progress', 'stuck', 'complete')`,

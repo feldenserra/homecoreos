@@ -16,8 +16,8 @@ const UUID_RE =
  * and a well-formed uuid the caller is not a member of still resolves to null,
  * because `home_select` requires membership.
  *
- * A Stack rather than a Slot, because AI settings sits alongside the tabs and
- * needs to be pushed over them. The tab group draws its own header, so this
+ * A Stack rather than a Slot, because per-app settings sit alongside the tabs
+ * and need to be pushed over them. The tab group draws its own header, so this
  * one hides it for that screen.
  */
 export default function HomeLayout() {
@@ -47,11 +47,23 @@ export default function HomeLayout() {
       <Stack screenOptions={navScreenOptions}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
+          name="settings/chat"
+          options={{
+            title: "Chat settings",
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="settings/tasks"
+          options={{
+            title: "Tasks settings",
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
           name="settings/ai"
           options={{
             title: "AI settings",
-            // The web version was a Mantine Modal; a modal presentation keeps
-            // that "temporary layer over the app" feel.
             presentation: "modal",
           }}
         />

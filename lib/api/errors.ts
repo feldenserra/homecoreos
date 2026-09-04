@@ -22,6 +22,8 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   task_title_length_check: "Title must be between 1 and 200 characters.",
   task_status_check: "Invalid status.",
   task_position_check: "Invalid position.",
+  task_assignee_home_member_fk: "That person is not in this home.",
+  task_assignedToUserId_user_id_fk: "That person is not in this home.",
   chat_message_role_check: "Invalid message role.",
   chat_message_content_length_check: "Message is too long.",
   chat_message_content_encrypted_check:
@@ -67,7 +69,11 @@ export function messageFromError(
       return postgrest.message || fallback;
     }
 
-    if (postgrest.code === "23514" || postgrest.code === "23505") {
+    if (
+      postgrest.code === "23514" ||
+      postgrest.code === "23505" ||
+      postgrest.code === "23503"
+    ) {
       const name = constraintName(postgrest);
       if (name) {
         return CONSTRAINT_MESSAGES[name];

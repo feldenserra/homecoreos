@@ -129,9 +129,12 @@ export function AppSwitcherArc({
   }, [activeAppId, apps, offset, open]);
 
   const rotateToIndex = useCallback(
-    (index: number) => {
+    (targetIndex: number) => {
+      const current = Math.round(offset.value);
+      // Shortest signed step so taps don't reverse through the long way.
+      const delta = wrapDelta(targetIndex - current, count);
       // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-      offset.value = withTiming(wrapIndex(index, count), { duration: SNAP_MS });
+      offset.value = withTiming(current + delta, { duration: SNAP_MS });
     },
     [count, offset],
   );
@@ -150,10 +153,10 @@ export function AppSwitcherArc({
     [apps, onSelect, rotateToIndex],
   );
 
-  // Discrete ±1 snap: no free-spin drag follow. One swipe → next/prev app.
+  // Discrete ±1 snap on a continuous offset so wrap-around keeps swipe direction.
   // oxlint-disable-next-line react/capitalized-calls -- Gesture.Pan is a factory, not a component
   const pan = Gesture.Pan().onEnd((event) => {
-    const current = wrapIndex(offset.value, count);
+    const current = Math.round(offset.value);
     const stepped =
       event.translationX <= -SWIPE_DISTANCE ||
       event.velocityX <= -SWIPE_VELOCITY
@@ -163,9 +166,7 @@ export function AppSwitcherArc({
           ? -1
           : 0;
     // eslint-disable-next-line react/immutability -- Reanimated SharedValue
-    offset.value = withTiming(wrapIndex(current + stepped, count), {
-      duration: SNAP_MS,
-    });
+    offset.value = withTiming(current + stepped, { duration: SNAP_MS });
   });
 
   if (!open) {

@@ -380,9 +380,9 @@ export function ChatView({
                 </Muted>
                 <Button
                   mode="contained-tonal"
-                  onPress={() => router.push(`/home/${homeId}/settings/ai`)}
+                  onPress={() => router.push(`/home/${homeId}/settings/chat`)}
                 >
-                  AI settings
+                  Chat settings
                 </Button>
               </View>
             ) : (

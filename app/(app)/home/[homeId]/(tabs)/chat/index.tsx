@@ -93,22 +93,37 @@ export default function ChatListScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New chat"
-              onPress={() => router.push(`/home/${home.id}/chat/new`)}
-              style={({ pressed }) => [
-                styles.newChatButton,
-                pressed && styles.newChatButtonPressed,
-              ]}
-              hitSlop={8}
-            >
-              <MaterialCommunityIcons
-                name="plus"
-                size={20}
-                color={colors.ink}
-              />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Chat settings"
+                onPress={() => router.push(`/home/${home.id}/settings/chat`)}
+                style={styles.headerIcon}
+                hitSlop={8}
+              >
+                <MaterialCommunityIcons
+                  name="cog-outline"
+                  size={22}
+                  color={colors.muted}
+                />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="New chat"
+                onPress={() => router.push(`/home/${home.id}/chat/new`)}
+                style={({ pressed }) => [
+                  styles.newChatButton,
+                  pressed && styles.newChatButtonPressed,
+                ]}
+                hitSlop={8}
+              >
+                <MaterialCommunityIcons
+                  name="plus"
+                  size={20}
+                  color={colors.ink}
+                />
+              </Pressable>
+            </View>
           ),
         }}
       />
@@ -166,14 +181,6 @@ export default function ChatListScreen() {
           </View>
         )}
 
-        <Button
-          mode="text"
-          textColor={colors.muted}
-          style={styles.settingsLink}
-          onPress={() => router.push(`/home/${home.id}/settings/ai`)}
-        >
-          AI settings
-        </Button>
       </Screen>
     </>
   );
@@ -186,11 +193,22 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 8,
+    gap: 4,
+  },
+  headerIcon: {
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   newChatButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    marginRight: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.claySoft,
@@ -231,5 +249,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  settingsLink: { alignSelf: "flex-start" },
 });

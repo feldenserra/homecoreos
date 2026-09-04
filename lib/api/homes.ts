@@ -24,10 +24,42 @@ export type HomeQuota = {
   joinedCount: number;
 };
 
+export type HomeMemberProfile = {
+  userId: string;
+  role: HomeMemberRole;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+};
+
 type MembershipRow = {
   role: string;
   home: { id: string; name: string; code: string } | null;
 };
+
+type MemberListRow = {
+  userId: string;
+  role: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
+};
+
+/**
+ * home_member_select now returns every housemate, so queries that used to rely
+ * on "RLS = only my row" must name the caller. The id comes from the session,
+ * not from the caller of this module.
+ */
+async function currentUserId(): Promise<string> {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) {
+    throw new Error("You are not signed in.");
+  }
+  return data.user.id;
+}
 
 function toSummary(row: MembershipRow): HomeSummary | null {
   return row.home
@@ -43,9 +75,11 @@ function toSummary(row: MembershipRow): HomeSummary | null {
 }
 
 export async function listHomes(): Promise<HomeSummary[]> {
+  const userId = await currentUserId();
   const { data, error } = await supabase
     .from("home_member")
     .select("role, home(id, name, code)")
+    .eq("userId", userId)
     .order("name", { referencedTable: "home", ascending: true });
 
   if (error) {
@@ -60,10 +94,12 @@ export async function listHomes(): Promise<HomeSummary[]> {
 export async function getHomeMembership(
   homeId: string,
 ): Promise<HomeSummary | null> {
+  const userId = await currentUserId();
   const { data, error } = await supabase
     .from("home_member")
     .select("role, home(id, name, code)")
     .eq("homeId", homeId)
+    .eq("userId", userId)
     .limit(1);
 
   if (error) {
@@ -120,10 +156,12 @@ export async function joinHome(code: string): Promise<HomeSummary> {
 
   // join_home is idempotent, so this may be a home the caller already owns —
   // read the role back rather than assuming "member".
+  const userId = await currentUserId();
   const { data: memberRows } = await supabase
     .from("home_member")
     .select("role")
     .eq("homeId", data.id)
+    .eq("userId", userId)
     .limit(1);
 
   return {
@@ -136,12 +174,42 @@ export async function joinHome(code: string): Promise<HomeSummary> {
 
 /** Owners cannot leave — the RLS policy blocks it, so the UI should hide it. */
 export async function leaveHome(homeId: string): Promise<void> {
+  const userId = await currentUserId();
   const { error } = await supabase
     .from("home_member")
     .delete()
-    .eq("homeId", homeId);
+    .eq("homeId", homeId)
+    .eq("userId", userId);
 
   if (error) {
     throw new Error(messageFromError(error, "Could not leave that home."));
   }
+}
+
+export async function listHomeMembers(
+  homeId: string,
+): Promise<HomeMemberProfile[]> {
+  const { data, error } = await supabase
+    .from("home_member")
+    .select("userId, role, user(id, name, email, image)")
+    .eq("homeId", homeId)
+    .order("joinedAt", { ascending: true });
+
+  if (error) {
+    throw new Error(messageFromError(error, "Could not load household members."));
+  }
+
+  return ((data as MemberListRow[]) ?? []).flatMap((row) =>
+    row.user
+      ? [
+          {
+            userId: row.userId,
+            role: row.role as HomeMemberRole,
+            name: row.user.name,
+            email: row.user.email,
+            image: row.user.image,
+          },
+        ]
+      : [],
+  );
 }

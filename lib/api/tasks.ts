@@ -19,6 +19,7 @@ export type Task = {
   status: TaskStatus;
   position: number;
   createdByUserId: string;
+  assignedToUserId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -95,5 +96,21 @@ export async function deleteTask(input: {
 
   if (error) {
     throw new Error(messageFromError(error, "Could not delete task."));
+  }
+}
+
+export async function assignTask(input: {
+  homeId: string;
+  taskId: string;
+  assignedToUserId: string | null;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("task")
+    .update({ assignedToUserId: input.assignedToUserId })
+    .eq("id", input.taskId)
+    .eq("homeId", input.homeId);
+
+  if (error) {
+    throw new Error(messageFromError(error, "Could not assign that task."));
   }
 }

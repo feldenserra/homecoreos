@@ -12,13 +12,20 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Button, Modal, Portal, TextInput } from "react-native-paper";
+import { useAsync } from "../../hooks/use-async";
 import {
+  listHomeMembers,
+  type HomeMemberProfile,
+} from "../../lib/api/homes";
+import {
+  assignTask as assignTaskRequest,
   createTask as createTaskRequest,
   deleteTask as deleteTaskRequest,
   moveTask as moveTaskRequest,
   type Task,
 } from "../../lib/api/tasks";
 import { TASK_STATUSES, type TaskStatus } from "../../lib/types";
+import { MemberAvatar, memberLabel } from "./member-avatar";
 import {
   colors,
   displayTextStyle,
@@ -31,6 +38,7 @@ import {
 import { ErrorText, MetaLabel } from "../ui";
 
 const COLUMN_GAP = 12;
+const EMPTY_MEMBERS: HomeMemberProfile[] = [];
 
 /**
  * The shared task board. Replaces components/kanban/kanban-board.tsx.
@@ -98,6 +106,18 @@ export function KanbanBoard({
 }) {
   const { width } = useWindowDimensions();
   const groups = useMemo(() => groupByStatus(tasks), [tasks]);
+  const membersState = useAsync(
+    async () => await listHomeMembers(homeId),
+    [homeId],
+  );
+  const members = membersState.data ?? EMPTY_MEMBERS;
+  const membersById = useMemo(() => {
+    const map = new Map<string, HomeMemberProfile>();
+    for (const member of members) {
+      map.set(member.userId, member);
+    }
+    return map;
+  }, [members]);
   const columnsRef = useRef<ScrollView | null>(null);
 
   const [picked, setPicked] = useState<Task | null>(null);
@@ -216,6 +236,40 @@ export function KanbanBoard({
     [homeId, onRefresh],
   );
 
+  const assign = useCallback(
+    async (task: Task, assignedToUserId: string | null) => {
+      if (task.assignedToUserId === assignedToUserId) {
+        return;
+      }
+
+      const previous = tasks;
+
+      const next: Task = { ...task, assignedToUserId };
+
+      setError(null);
+      setBusyTaskId(task.id);
+      setPicked(next);
+      onTasksChange(
+        previous.map((candidate) =>
+          candidate.id === task.id ? next : candidate,
+        ),
+      );
+
+      try {
+        await assignTaskRequest({ homeId, taskId: task.id, assignedToUserId });
+      } catch (err) {
+        setPicked(task);
+        onTasksChange(previous);
+        setError(
+          err instanceof Error ? err.message : "Could not assign that task.",
+        );
+      } finally {
+        setBusyTaskId(null);
+      }
+    },
+    [homeId, onTasksChange, tasks],
+  );
+
   return (
     <View style={styles.root}>
       <ErrorText>{error}</ErrorText>
@@ -273,6 +327,7 @@ export function KanbanBoard({
             status={status}
             width={columnWidth}
             tasks={groups[status]}
+            membersById={membersById}
             busyTaskId={busyTaskId}
             onOpenTask={setPicked}
             onAdd={add}
@@ -318,6 +373,51 @@ export function KanbanBoard({
                   </Pressable>
                 ))}
               </View>
+
+              <MetaLabel>Assign to</MetaLabel>
+              <ErrorText>{membersState.error}</ErrorText>
+              <ScrollView
+                style={styles.assigneeList}
+                contentContainerStyle={styles.assigneeListContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: picked.assignedToUserId === null,
+                  }}
+                  onPress={() => void assign(picked, null)}
+                  style={({ pressed }) => [
+                    styles.assigneeRow,
+                    picked.assignedToUserId === null &&
+                      styles.assigneeRowCurrent,
+                    pressed && styles.assigneeRowPressed,
+                  ]}
+                >
+                  <Text style={styles.assigneeName}>Unassigned</Text>
+                </Pressable>
+                {members.map((member) => {
+                  const selected = picked.assignedToUserId === member.userId;
+                  return (
+                    <Pressable
+                      key={member.userId}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => void assign(picked, member.userId)}
+                      style={({ pressed }) => [
+                        styles.assigneeRow,
+                        selected && styles.assigneeRowCurrent,
+                        pressed && styles.assigneeRowPressed,
+                      ]}
+                    >
+                      <MemberAvatar member={member} />
+                      <Text style={styles.assigneeName} numberOfLines={1}>
+                        {memberLabel(member)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
               <Button
                 mode="text"
@@ -380,6 +480,7 @@ function Column({
   status,
   width,
   tasks,
+  membersById,
   busyTaskId,
   onOpenTask,
   onAdd,
@@ -387,6 +488,7 @@ function Column({
   status: TaskStatus;
   width: number;
   tasks: Task[];
+  membersById: Map<string, HomeMemberProfile>;
   busyTaskId: string | null;
   onOpenTask: (task: Task) => void;
   onAdd: (status: TaskStatus, title: string) => Promise<void>;
@@ -423,25 +525,32 @@ function Column({
         contentContainerStyle={styles.columnBodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {tasks.map((task) => (
-          <Pressable
-            key={task.id}
-            accessibilityRole="button"
-            accessibilityHint="Opens the move and delete options"
-            onPress={() => onOpenTask(task)}
-            disabled={busyTaskId === task.id}
-            style={({ pressed }) => [
-              styles.taskCard,
-              pressed && styles.taskCardPressed,
-              busyTaskId === task.id && styles.taskCardBusy,
-            ]}
-          >
-            <Text style={styles.taskTitle}>{task.title}</Text>
-            {busyTaskId === task.id ? (
-              <ActivityIndicator size="small" color={colors.muted} />
-            ) : null}
-          </Pressable>
-        ))}
+        {tasks.map((task) => {
+          const assignee = task.assignedToUserId
+            ? membersById.get(task.assignedToUserId)
+            : undefined;
+          return (
+            <Pressable
+              key={task.id}
+              accessibilityRole="button"
+              accessibilityHint="Opens the move, assign, and delete options"
+              onPress={() => onOpenTask(task)}
+              disabled={busyTaskId === task.id}
+              style={({ pressed }) => [
+                styles.taskCard,
+                pressed && styles.taskCardPressed,
+                busyTaskId === task.id && styles.taskCardBusy,
+              ]}
+            >
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              {busyTaskId === task.id ? (
+                <ActivityIndicator size="small" color={colors.muted} />
+              ) : assignee ? (
+                <MemberAvatar member={assignee} />
+              ) : null}
+            </Pressable>
+          );
+        })}
 
         {tasks.length === 0 && !adding ? (
           <Text style={styles.emptyText}>Nothing here.</Text>
@@ -693,5 +802,35 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     alignItems: "center",
     gap: 8,
+  },
+  assigneeList: {
+    maxHeight: 180,
+  },
+  assigneeListContent: {
+    gap: 6,
+  },
+  assigneeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 40,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+  },
+  assigneeRowCurrent: {
+    backgroundColor: colors.claySoft,
+    borderColor: colors.clay,
+  },
+  assigneeRowPressed: {
+    opacity: 0.7,
+  },
+  assigneeName: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

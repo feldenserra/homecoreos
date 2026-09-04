@@ -13,7 +13,7 @@ import { colors, TOUCH_TARGET } from "../../../../../theme/tokens";
  * semi-circular app switcher (Home | Switcher | Last app) instead of the
  * default tab icons.
  *
- * The rail's brand link ("Switch home") remains the header action.
+ * Switch home stays on the Home tab only. Other apps get a settings cog.
  */
 export default function HomeTabsLayout() {
   const home = useHome();
@@ -25,21 +25,6 @@ export default function HomeTabsLayout() {
         ...navScreenOptions,
         headerShown: true,
         title: home.name,
-        headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Switch home"
-            onPress={() => router.replace("/homes")}
-            style={styles.headerAction}
-            hitSlop={8}
-          >
-            <MaterialCommunityIcons
-              name="swap-horizontal"
-              size={22}
-              color={colors.muted}
-            />
-          </Pressable>
-        ),
       }}
     >
       <Tabs.Screen
@@ -47,6 +32,21 @@ export default function HomeTabsLayout() {
         options={{
           title: home.name,
           tabBarLabel: "Home",
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Switch home"
+              onPress={() => router.replace("/homes")}
+              style={styles.headerAction}
+              hitSlop={8}
+            >
+              <MaterialCommunityIcons
+                name="swap-horizontal"
+                size={22}
+                color={colors.muted}
+              />
+            </Pressable>
+          ),
         }}
       />
       <Tabs.Screen
@@ -54,6 +54,21 @@ export default function HomeTabsLayout() {
         options={{
           title: "Tasks",
           tabBarLabel: "Tasks",
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tasks settings"
+              onPress={() => router.push(`/home/${home.id}/settings/tasks`)}
+              style={styles.headerAction}
+              hitSlop={8}
+            >
+              <MaterialCommunityIcons
+                name="cog-outline"
+                size={22}
+                color={colors.muted}
+              />
+            </Pressable>
+          ),
         }}
       />
       <Tabs.Screen

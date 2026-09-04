@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Load HomeCore schema SQL from supabase/migrations/ onto the compose Postgres.
-# This is not Drizzle apply and not supabase db push — just psql of those files.
+# Load HomeCore schema SQL from supabase/migrations/ onto self-host Postgres.
+# Used by the apply-schema one-shot in docker-compose.homecore.yml.
+# Not Drizzle apply and not supabase db push — just psql of those files.
 set -euo pipefail
 
 PGHOST=db

@@ -21,9 +21,11 @@
     "supabase:reset": "supabase db reset",
     "supabase:functions": "supabase functions serve --env-file .env",
     "supabase:deploy": "supabase functions deploy chat conversations ai-keys",
-    "compose:up": "node docker/ensure-env.mjs",
-    "compose:down": "docker compose down",
-    "compose:logs": "docker compose logs -f",
+    "supabase:selfhost:init": "node docker/selfhost.mjs init",
+    "supabase:selfhost:up": "node docker/selfhost.mjs up",
+    "supabase:selfhost:down": "node docker/selfhost.mjs down",
+    "supabase:selfhost:logs": "node docker/selfhost.mjs logs",
+    "supabase:commission": "node docker/selfhost.mjs commission",
     "types:generate": "supabase gen types typescript --local > lib/database.types.ts"
   },
   "dependencies": {

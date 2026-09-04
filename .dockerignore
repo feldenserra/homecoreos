@@ -13,8 +13,7 @@ coverage
 .env
 .env.*
 !.env.example
-docker/supabase/volumes/db/data
-docker/supabase/volumes/storage
+docker/supabase-project
 agent-transcripts
 **/.DS_Store
 **/Thumbs.db

@@ -1,0 +1,31 @@
+# HomeCore overlay for the official Supabase self-host project.
+# Copied into docker/supabase-project/ by selfhost.mjs — paths are relative
+# to that directory (Compose resolves volumes against the project dir).
+
+services:
+  functions:
+    volumes: !override
+      - ../volumes/functions/main:/home/deno/functions/main:z
+      - ../../supabase/functions/chat:/home/deno/functions/chat:z
+      - ../../supabase/functions/conversations:/home/deno/functions/conversations:z
+      - ../../supabase/functions/ai-keys:/home/deno/functions/ai-keys:z
+      - ../../supabase/functions/_shared:/home/deno/functions/_shared:z
+      - ../../supabase/functions/deno.json:/home/deno/functions/deno.json:z
+      - deno-cache:/root/.cache/deno
+    environment:
+      CHAT_CONTENT_ENCRYPTION_KEY: ${CHAT_CONTENT_ENCRYPTION_KEY}
+      AI_ALLOW_INSECURE_HOSTS: ${AI_ALLOW_INSECURE_HOSTS:-}
+
+  apply-schema:
+    container_name: homecore-apply-schema
+    image: supabase/postgres:17.6.1.136
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../../supabase/migrations:/migrations:ro,z
+      - ../apply-schema.sh:/apply-schema.sh:ro,z
+    entrypoint: ["/bin/bash", "/apply-schema.sh"]

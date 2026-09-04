@@ -1,5 +1,5 @@
-# HomeCore Expo web — static export served by nginx.
-# EXPO_PUBLIC_* must be passed as build-args (inlined at export time).
+# Optional static web export (nginx). Not required to run or commission the app.
+# Build with EXPO_PUBLIC_* build-args pointing at your commissioned Supabase.
 
 FROM node:22-bookworm AS builder
 

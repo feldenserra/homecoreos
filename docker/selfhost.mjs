@@ -1,19 +1,17 @@
 #!/usr/bin/env node
 /**
- * Thin wrapper around official Supabase self-host Docker.
+ * Official Supabase self-host helper (open-core).
  *
- *   node docker/selfhost.mjs init        # sparse-clone pinned docker/ + generate secrets
- *   node docker/selfhost.mjs up          # start official stack + HomeCore overlay
- *   node docker/selfhost.mjs down
- *   node docker/selfhost.mjs logs [svc]
- *   node docker/selfhost.mjs commission  # apply migrations + print app .env snippet
- *   node docker/selfhost.mjs env         # print URL + anon key for root .env
+ *   yarn supabase:commission   # init (if needed) → up → migrate → print .env
+ *   yarn supabase:selfhost:down
+ *   yarn supabase:selfhost:logs
  */
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -26,6 +24,7 @@ import { tmpdir } from "node:os";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const projectDir = join(__dirname, "supabase-project");
+const migrationsDir = join(root, "supabase", "migrations");
 const versionFile = join(__dirname, "SUPABASE_DOCKER_VERSION");
 const overlayFile = join(__dirname, "docker-compose.homecore.yml");
 const repoUrl = process.env.SUPABASE_REPO_URL ?? "https://github.com/supabase/supabase";
@@ -54,10 +53,17 @@ function readPin() {
   return readFileSync(versionFile, "utf8").trim();
 }
 
+function projectReady() {
+  return (
+    existsSync(join(projectDir, "docker-compose.yml")) &&
+    existsSync(join(projectDir, ".env"))
+  );
+}
+
 function readProjectEnv() {
   const envPath = join(projectDir, ".env");
   if (!existsSync(envPath)) {
-    die(`Missing ${envPath}. Run: yarn supabase:selfhost:init`);
+    die(`Missing ${envPath}. Run: yarn supabase:commission`);
   }
   const map = new Map();
   for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
@@ -93,10 +99,8 @@ function syncOverlay() {
     die(`Missing HomeCore overlay ${overlayFile}`);
   }
   if (!existsSync(join(projectDir, "docker-compose.yml"))) {
-    die(`No official project at ${projectDir}. Run: yarn supabase:selfhost:init`);
+    die(`No official project at ${projectDir}. Run: yarn supabase:commission`);
   }
-  // Compose resolves relative volume paths against the project directory
-  // (first -f file), so the overlay must live next to docker-compose.yml.
   copyFileSync(overlayFile, join(projectDir, "docker-compose.homecore.yml"));
 }
 
@@ -120,6 +124,59 @@ function compose(extra) {
   run("docker", composeArgs(extra), { cwd: projectDir });
 }
 
+/** Run SQL via psql inside the running db container. */
+function psql(input) {
+  const args = composeArgs([
+    "exec",
+    "-T",
+    "db",
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+  ]);
+  const result = spawnSync("docker", args, {
+    cwd: projectDir,
+    input,
+    encoding: "utf8",
+    shell: process.platform === "win32",
+  });
+  if (result.status !== 0) {
+    die((result.stderr || result.stdout || "psql failed").trim());
+  }
+  return (result.stdout ?? "").trim();
+}
+
+/** One-shot query; returns trimmed stdout (tuples only). */
+function psqlScalar(query) {
+  const args = composeArgs([
+    "exec",
+    "-T",
+    "db",
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "-tAc",
+    query,
+  ]);
+  const result = spawnSync("docker", args, {
+    cwd: projectDir,
+    encoding: "utf8",
+    shell: process.platform === "win32",
+  });
+  if (result.status !== 0) {
+    die((result.stderr || result.stdout || "psql failed").trim());
+  }
+  return (result.stdout ?? "").trim();
+}
+
 function sparseClone(dest, ref) {
   mkdirSync(dest, { recursive: true });
   run("git", [
@@ -137,13 +194,7 @@ function sparseClone(dest, ref) {
   run("git", ["checkout", "--quiet"], { cwd: dest });
 }
 
-function init() {
-  if (existsSync(projectDir)) {
-    die(
-      `${projectDir} already exists.\n` +
-        `Remove it to re-init, or run: yarn supabase:selfhost:up`,
-    );
-  }
+function initFresh() {
   if (!existsSync(overlayFile)) {
     die(`Missing ${overlayFile}`);
   }
@@ -175,7 +226,6 @@ function init() {
     die("Official docker tree has no .env.example to copy");
   }
 
-  // Localhost defaults for a clone-and-run self-host.
   setEnvKey(envPath, "SUPABASE_PUBLIC_URL", "http://localhost:8000");
   setEnvKey(envPath, "API_EXTERNAL_URL", "http://localhost:8000/auth/v1");
   setEnvKey(envPath, "SITE_URL", "http://localhost:8081");
@@ -198,7 +248,7 @@ function init() {
     ].join("\n"),
   );
 
-  console.log(`==> Pulling images (may take a while)`);
+  console.log("==> Pulling images (may take a while)");
   const pull = spawnSync(
     "docker",
     [
@@ -215,16 +265,17 @@ function init() {
   );
   if (pull.status !== 0) {
     console.warn(
-      "WARNING: docker compose pull failed; retry later with: yarn supabase:selfhost:up",
+      "WARNING: docker compose pull failed; continuing — up will retry pulls.",
     );
   }
+}
 
-  console.log("");
-  console.log(`Self-host project ready at ${projectDir}`);
-  console.log("Next:");
-  console.log("  yarn supabase:selfhost:up");
-  console.log("  yarn supabase:commission");
-  console.log("  # paste printed keys into root .env, then: yarn start");
+function ensureInit() {
+  if (projectReady()) {
+    console.log("==> Self-host project already present");
+    return;
+  }
+  initFresh();
 }
 
 function up() {
@@ -232,26 +283,67 @@ function up() {
   ensureChatKey(envPath, map);
   console.log("==> Starting official Supabase + HomeCore overlay");
   compose(["up", "-d", "--wait"]);
-  console.log("");
-  console.log("Stack is up. Apply schema (if needed) and print app keys:");
-  console.log("  yarn supabase:commission");
 }
 
 function down() {
+  if (!projectReady()) {
+    die(`No project at ${projectDir}`);
+  }
   compose(["down"]);
 }
 
 function logs(service) {
+  if (!projectReady()) {
+    die(`No project at ${projectDir}`);
+  }
   compose(service ? ["logs", "-f", service] : ["logs", "-f"]);
+}
+
+function applyMigrations() {
+  if (!existsSync(migrationsDir)) {
+    die(`Missing ${migrationsDir}`);
+  }
+
+  console.log("==> Applying HomeCore migrations");
+  psql(`
+CREATE TABLE IF NOT EXISTS public._homecore_schema_applied (
+  filename text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+`);
+
+  const files = readdirSync(migrationsDir)
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+
+  if (files.length === 0) {
+    console.log("No SQL files under supabase/migrations/");
+    return;
+  }
+
+  for (const name of files) {
+    const safe = name.replace(/'/g, "''");
+    const already = psqlScalar(
+      `SELECT 1 FROM public._homecore_schema_applied WHERE filename = '${safe}'`,
+    );
+    if (already === "1") {
+      console.log(`Skip ${name} (already applied)`);
+      continue;
+    }
+    console.log(`Apply ${name}...`);
+    psql(readFileSync(join(migrationsDir, name)));
+    psql(
+      `INSERT INTO public._homecore_schema_applied (filename) VALUES ('${safe}')`,
+    );
+  }
+  console.log("HomeCore schema SQL applied.");
 }
 
 function printAppEnv() {
   const { map } = readProjectEnv();
   const url = map.get("SUPABASE_PUBLIC_URL") || "http://localhost:8000";
   const anon =
-    map.get("ANON_KEY") ||
-    map.get("SUPABASE_PUBLISHABLE_KEY") ||
-    "";
+    map.get("ANON_KEY") || map.get("SUPABASE_PUBLISHABLE_KEY") || "";
   console.log("");
   console.log("Paste into repo-root .env for the app:");
   console.log("---");
@@ -259,21 +351,16 @@ function printAppEnv() {
   console.log(`EXPO_PUBLIC_SUPABASE_ANON_KEY=${anon}`);
   console.log("---");
   console.log(
-    "(Edge secret CHAT_CONTENT_ENCRYPTION_KEY stays in docker/supabase-project/.env — do not put it in the app binary.)",
+    "(CHAT_CONTENT_ENCRYPTION_KEY stays in docker/supabase-project/.env — not in the app binary.)",
   );
 }
 
 function commission() {
-  const { envPath, map } = readProjectEnv();
-  ensureChatKey(envPath, map);
-
-  console.log("==> Applying HomeCore migrations (apply-schema)");
-  // One-shot service: recreate so it runs even if a prior exit remains.
-  compose(["run", "--rm", "apply-schema"]);
-
+  ensureInit();
+  up();
+  applyMigrations();
   console.log("==> Restarting functions so mounts/secrets are current");
   compose(["up", "-d", "--force-recreate", "functions"]);
-
   printAppEnv();
   console.log("");
   console.log("Then: yarn start");
@@ -281,11 +368,8 @@ function commission() {
 
 const [cmd, ...rest] = process.argv.slice(2);
 switch (cmd) {
-  case "init":
-    init();
-    break;
-  case "up":
-    up();
+  case "commission":
+    commission();
     break;
   case "down":
     down();
@@ -293,13 +377,22 @@ switch (cmd) {
   case "logs":
     logs(rest[0]);
     break;
-  case "commission":
-    commission();
-    break;
   case "env":
     printAppEnv();
     break;
+  case "init":
+    if (projectReady()) {
+      die(`${projectDir} already exists. Use: yarn supabase:commission`);
+    }
+    initFresh();
+    console.log("\nNext: yarn supabase:commission");
+    break;
+  case "up":
+    up();
+    break;
   default:
-    console.log(`Usage: node docker/selfhost.mjs <init|up|down|logs|commission|env>`);
+    console.log(
+      "Usage: node docker/selfhost.mjs <commission|down|logs|env>",
+    );
     process.exit(cmd ? 1 : 0);
 }

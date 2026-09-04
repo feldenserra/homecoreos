@@ -8,22 +8,23 @@ config();
  * thing that applies migrations.
  *
  * `yarn db:generate` writes SQL to ./drizzle for review; the file you actually
- * ship is the copy under supabase/migrations/, and `supabase db push` is the
- * only apply path. Applying with drizzle-kit instead would leave Supabase's
- * `supabase_migrations.schema_migrations` out of step with the real schema and
- * force a `supabase migration repair`. That is why db:push and db:migrate are
- * gone from package.json.
+ * ship is the copy under supabase/migrations/. Apply with `yarn supabase:push`
+ * (cloud) or `yarn supabase:commission` (self-host). Applying with drizzle-kit
+ * would desync supabase_migrations.schema_migrations — that is why db:push is
+ * blocked in package.json.
  *
- * Point DATABASE_URL_MIGRATE at the Supabase *direct* connection
- * (db.<project-ref>.supabase.co:5432), not the transaction pooler: pooled
- * connections cannot run DDL reliably.
+ * dbCredentials.url is required by drizzle-kit's config shape; generate is
+ * schema-file driven and does not need a live DB. For `yarn db:studio`, set
+ * DATABASE_URL to the Supabase *direct* connection (not the pooler).
  */
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL_MIGRATE ?? process.env.DATABASE_URL!,
+    url:
+      process.env.DATABASE_URL ??
+      "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
   },
   // Leave Supabase's own schemas (auth, storage, realtime, graphql, ...) alone.
   schemaFilter: ["public"],

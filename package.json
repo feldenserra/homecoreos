@@ -14,19 +14,13 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "db:push": "echo 'Use `yarn supabase:push`. Applying with drizzle-kit desyncs supabase_migrations.schema_migrations.' && exit 1",
-    "supabase:start": "supabase start",
-    "supabase:status": "supabase status",
-    "supabase:stop": "supabase stop",
     "supabase:push": "supabase db push",
-    "supabase:reset": "supabase db reset",
-    "supabase:functions": "supabase functions serve --env-file .env",
     "supabase:deploy": "supabase functions deploy chat conversations ai-keys",
-    "supabase:selfhost:init": "node docker/selfhost.mjs init",
-    "supabase:selfhost:up": "node docker/selfhost.mjs up",
+    "supabase:ship": "yarn supabase:push && yarn supabase:deploy",
+    "supabase:commission": "node docker/selfhost.mjs commission",
     "supabase:selfhost:down": "node docker/selfhost.mjs down",
     "supabase:selfhost:logs": "node docker/selfhost.mjs logs",
-    "supabase:commission": "node docker/selfhost.mjs commission",
-    "types:generate": "supabase gen types typescript --local > lib/database.types.ts"
+    "types:generate": "supabase gen types typescript --linked > lib/database.types.ts"
   },
   "dependencies": {
     "@expo-google-fonts/fraunces": "^0.4.1",

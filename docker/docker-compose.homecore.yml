@@ -15,17 +15,3 @@ services:
     environment:
       CHAT_CONTENT_ENCRYPTION_KEY: ${CHAT_CONTENT_ENCRYPTION_KEY}
       AI_ALLOW_INSECURE_HOSTS: ${AI_ALLOW_INSECURE_HOSTS:-}
-
-  apply-schema:
-    container_name: homecore-apply-schema
-    image: supabase/postgres:17.6.1.136
-    restart: "no"
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - ../../supabase/migrations:/migrations:ro,z
-      - ../apply-schema.sh:/apply-schema.sh:ro,z
-    entrypoint: ["/bin/bash", "/apply-schema.sh"]

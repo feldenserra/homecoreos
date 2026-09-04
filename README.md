@@ -19,46 +19,69 @@ Cross-platform Expo (iOS, Android, web) on Supabase.
 | Server-only logic | `supabase/functions/` (Deno Edge Functions) |
 
 **Authorization is row-level security, not application code.** Every policy is
-keyed on `(select auth.uid())`, so the client's JWT is the only identity in play.
+keyed on `(select auth.uid())`.
 
-Edge Functions (not direct client queries): `chat`, `conversations`, `ai-keys`.
-
+Edge Functions: `chat`, `conversations`, `ai-keys`.
 Postgres RPCs: `create_home(p_name)`, `join_home(p_code)`.
 
-The app and the backend are separate: **commission Supabase once**, then run the
-app against it.
+The app only needs a Supabase URL + anon key. Server secrets (especially
+`CHAT_CONTENT_ENCRYPTION_KEY`) never go in the app `.env`.
 
 ## Run the app
 
 ```bash
 yarn install
 cp .env.example .env
-# set EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY from your instance
+# EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY from your backend
 yarn start
 ```
 
-That is the whole app path. No Docker Compose is required to start Expo.
+## Self-host (open-core)
 
-## Commission Supabase
+Uses [official Supabase Docker](https://supabase.com/docs/guides/self-hosting/docker)
+(pinned in `docker/SUPABASE_DOCKER_VERSION`).
 
-Pick one backend. Do not run the Supabase CLI stack and self-host Docker at the
-same time.
+```bash
+yarn install
+yarn supabase:commission   # init if needed → start → migrate → print keys
+# paste EXPO_PUBLIC_* into .env
+yarn start
+```
 
-### Cloud
+**Encryption key:** generated into `docker/supabase-project/.env` and passed to
+Edge Functions. Do not copy it into the app `.env`. Back it up before you wipe
+the project dir.
+
+Re-run `yarn supabase:commission` to apply new migration files.
+Stop / logs: `yarn supabase:selfhost:down`, `yarn supabase:selfhost:logs`.
+
+## Cloud: develop against a dev project
+
+One-time:
 
 ```bash
 cp .env.example .env
-# EXPO_PUBLIC_* → project URL + anon key
-# DATABASE_URL_MIGRATE → direct DB URL (not the pooler), for drizzle only
+# Dashboard → Project URL + anon key → EXPO_PUBLIC_*
 
-supabase link --project-ref <project-ref>
-yarn supabase:push
+supabase link --project-ref <dev-ref>
 supabase secrets set CHAT_CONTENT_ENCRYPTION_KEY="$(openssl rand -base64 32)"
-yarn supabase:deploy
+# Back that key up — losing it makes encrypted chat/credentials unreadable.
+yarn supabase:ship
 yarn start
 ```
 
-Auth → URL Configuration should include:
+Day-to-day loop (linked to **dev**):
+
+```text
+edit app / schema / functions
+  → yarn db:generate (if schema) → review SQL → land under supabase/migrations/
+  → yarn supabase:ship    # migrations + Edge Functions → linked project
+  → yarn start
+```
+
+Or separately: `yarn supabase:push` (SQL only), `yarn supabase:deploy` (functions).
+
+Auth → URL Configuration:
 
 ```
 homecoreos://auth/callback
@@ -66,53 +89,27 @@ homecoreos://**
 http://localhost:8081/**
 ```
 
-### Local CLI (day-to-day development)
+## Cloud: ship to prod
+
+Prod is a second Supabase project. Set its encryption secret **once** (do not
+rotate casually). Then push the same migrations/functions:
 
 ```bash
-cp .env.example .env
-yarn supabase:start           # paste anon key into .env
-openssl rand -base64 32       # → CHAT_CONTENT_ENCRYPTION_KEY in .env
-yarn supabase:push
-yarn supabase:functions       # other terminal
-yarn start
+supabase link --project-ref <prod-ref>
+# Confirm CHAT_CONTENT_ENCRYPTION_KEY is already set on prod
+yarn supabase:ship
 ```
 
-| Client | `EXPO_PUBLIC_SUPABASE_URL` |
-|---|---|
-| Web / iOS Simulator | `http://127.0.0.1:54321` |
-| Android emulator | `http://10.0.2.2:54321` |
-| Physical device | `http://<LAN-IP>:54321` |
-
-Use a **development build**, not Expo Go, for auth redirects.
-
-### Self-host (open-core)
-
-Uses the [official Supabase Docker](https://supabase.com/docs/guides/self-hosting/docker)
-tree (pinned in `docker/SUPABASE_DOCKER_VERSION`), not a vendored copy in git.
-HomeCore only adds migrations + Edge Function mounts.
-
-```bash
-yarn supabase:selfhost:init   # once — clones official docker/, generates secrets
-yarn supabase:selfhost:up
-yarn supabase:commission      # apply migrations, print keys for root .env
-# paste EXPO_PUBLIC_* into .env
-yarn start
-```
-
-Useful: `yarn supabase:selfhost:logs`, `yarn supabase:selfhost:down`.
-
-Generated project lives in `docker/supabase-project/` (gitignored). Change
-secrets there before exposing the stack beyond localhost.
-
-Optional static web image: [`Dockerfile`](Dockerfile) — build separately with
-your commissioned `EXPO_PUBLIC_*` values; it is not part of self-host up.
+Build/host the app with **prod** `EXPO_PUBLIC_*` (EAS, CI, or your web host).
+Keep local `.env` on the **dev** project for daily work; re-link when you ship,
+or run prod `ship` from CI with a prod access token.
 
 ## Schema workflow
 
-- Author in Drizzle: `yarn db:generate`
-- Ship SQL under `supabase/migrations/`
-- Apply with `yarn supabase:push` (CLI/cloud) or `yarn supabase:commission` (self-host)
-- Do not use `yarn db:push` — it desyncs Supabase migration history on purpose
+- Author: `yarn db:generate` → ship SQL under `supabase/migrations/`
+- Cloud: `yarn supabase:push` or `yarn supabase:ship`
+- Self-host: `yarn supabase:commission`
+- Do not use `yarn db:push` (desyncs Supabase migration history on purpose)
 
 ## Checks
 
@@ -126,13 +123,11 @@ deno check supabase/functions/*/index.ts
 ## Notes for whoever works on this next
 
 - **Constraint names are part of the UI contract.** `lib/api/errors.ts` maps
-  Postgres CHECK names to messages; renaming one without updating that map
-  silently degrades the error.
+  Postgres CHECK names to messages.
 - **Read `supabase/migrations/*_rls.sql` before changing a policy.**
-- **A LAN Ollama no longer works** from Edge Functions (SSRF guard). Public
-  hosts and tunnels are fine.
-- **No offline write queue.** Failed mutations surface errors; callers re-read.
+- **A LAN Ollama no longer works** from Edge Functions (SSRF guard).
+- **No offline write queue.**
 - **Dark mode is deliberately absent.**
 - **Self-host pin:** bump `docker/SUPABASE_DOCKER_VERSION`, remove
-  `docker/supabase-project/`, re-run `yarn supabase:selfhost:init`. Keep the
+  `docker/supabase-project/`, re-run `yarn supabase:commission`. Keep the
   HomeCore `importMapPath` in `docker/volumes/functions/main/index.ts`.
